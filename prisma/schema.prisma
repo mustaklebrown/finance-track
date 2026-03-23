@@ -1,0 +1,179 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -----------------------------------------------------------------------------
+// Multi-tenancy & Auth
+// -----------------------------------------------------------------------------
+model Store {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users      User[]
+  products   Product[]
+  categories Category[]
+  customers  Customer[]
+  sales      Sale[]
+  campaigns  Campaign[]
+  expenses   Expense[]
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role     @default(STAFF)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  storeId String
+  store   Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId])
+}
+
+enum Role {
+  OWNER
+  MANAGER
+  STAFF
+}
+
+// -----------------------------------------------------------------------------
+// Products & Inventory
+// -----------------------------------------------------------------------------
+model Category {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  storeId  String
+  store    Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  products Product[]
+
+  @@index([storeId])
+}
+
+model Product {
+  id             String   @id @default(uuid())
+  name           String
+  sku            String?
+  purchasePrice  Float    // COGS
+  sellingPrice   Float
+  stockLevel     Int      @default(0)
+  lowStockAlert  Int      @default(5)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  storeId    String
+  store      Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  categoryId String?
+  category   Category?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  saleItems  SaleItem[]
+
+  @@index([storeId])
+  @@index([categoryId])
+}
+
+// -----------------------------------------------------------------------------
+// Marketing & CRM
+// -----------------------------------------------------------------------------
+model Campaign {
+  id        String    @id @default(uuid())
+  name      String
+  channel   String    // e.g., Facebook, Google Ads, Email
+  budget    Float
+  startDate DateTime
+  endDate   DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  storeId   String
+  store     Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  customers Customer[] // Customers acquired from this campaign
+
+  @@index([storeId])
+  @@index([startDate, endDate])
+}
+
+model Customer {
+  id        String   @id @default(uuid())
+  name      String
+  email     String?
+  phone     String?
+  source    String?  // e.g., Organic, Ads, Social
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  storeId    String
+  store      Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  campaignId String?
+  campaign   Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  sales      Sale[]
+
+  @@index([storeId])
+  @@index([campaignId])
+}
+
+// -----------------------------------------------------------------------------
+// Transactions & Sales
+// -----------------------------------------------------------------------------
+model Sale {
+  id          String   @id @default(uuid())
+  totalAmount Float
+  createdAt   DateTime @default(now()) // Can serve as transaction date
+  updatedAt   DateTime @updatedAt
+
+  storeId    String
+  store      Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  customerId String?
+  customer   Customer?  @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  items      SaleItem[]
+
+  @@index([storeId])
+  @@index([customerId])
+  @@index([storeId, createdAt])
+}
+
+model SaleItem {
+  id         String   @id @default(uuid())
+  quantity   Int
+  unitPrice  Float    // Captured at time of sale
+  unitCost   Float    // COGS captured at time of sale to ensure historical accuracy
+  createdAt  DateTime @default(now())
+
+  saleId    String
+  sale      Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([saleId])
+  @@index([productId])
+}
+
+// -----------------------------------------------------------------------------
+// Expenses (for Net Margin calculation)
+// -----------------------------------------------------------------------------
+model Expense {
+  id          String   @id @default(uuid())
+  name        String
+  amount      Float
+  date        DateTime
+  category    String   // e.g., Rent, Salaries, Utilities
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  storeId String
+  store   Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId])
+  @@index([storeId, date])
+}
