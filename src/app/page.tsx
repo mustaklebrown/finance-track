@@ -29,6 +29,36 @@ import {
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { cn } from '@/lib/utils';
 
+const formatYAxis = (value: number) => {
+  if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+  if (value >= 1000) return `${(value / 1000).toFixed(0)}k`;
+  return value.toString();
+};
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="rounded-xl border border-zinc-200 bg-white/95 p-4 shadow-xl backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/95">
+        <p className="mb-3 font-semibold text-zinc-900 dark:text-zinc-100 border-b border-zinc-100 dark:border-zinc-800 pb-2">{label}</p>
+        <div className="space-y-2">
+          {payload.map((entry: any, index: number) => (
+            <div key={index} className="flex items-center justify-between gap-6 text-sm">
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: entry.color }} />
+                <span className="text-zinc-500 dark:text-zinc-400 capitalize">{entry.name}</span>
+              </div>
+              <span className="font-bold text-zinc-900 dark:text-zinc-100">
+                {entry.value.toLocaleString()} KMF
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
 export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
@@ -76,12 +106,13 @@ export default function Dashboard() {
         setPrevMonthData(kpiLast);
 
         // 3. Fetch Revenue vs Expenses
-        const revRes = await fetch(`/api/dashboard/charts/revenue-expenses?storeId=${storeId}&year=2025`);
+        const revRes = await fetch(`/api/dashboard/charts/revenue-expenses?storeId=${storeId}&year=${now.getFullYear()}`);
         const revData = await revRes.json();
         setRevenueData(revData.map((d: any) => ({
           month: d.month,
-          revenu: d.revenue,
-          depense: d.expenses
+          Revenus: d.revenue,
+          Dépenses: d.expenses,
+          'Bénéfice Net': d.revenue - d.expenses
         })));
 
         // 4. Fetch Category Sales
@@ -215,49 +246,50 @@ export default function Dashboard() {
         <div className="lg:col-span-2 rounded-2xl border border-zinc-100 bg-white p-6 shadow-sm dark:bg-zinc-900 dark:border-zinc-800">
           <div className="mb-6 flex items-center justify-between">
             <h3 className="text-lg font-semibold tracking-tight">Performance Financière</h3>
-            <div className="flex items-center gap-4 text-xs font-medium">
+            <div className="flex flex-wrap items-center gap-4 text-xs font-medium">
               <div className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-blue-500" /> Ventes (Revenu)
+                <span className="h-2 w-2 rounded-full bg-blue-500" /> Revenus
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-zinc-200 dark:bg-zinc-700" /> Dépenses
+                <span className="h-2 w-2 rounded-full bg-emerald-500" /> Bénéfice
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-red-400 dark:bg-red-500" /> Dépenses
               </div>
             </div>
           </div>
           <div className="h-[350px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={revenueData}>
+              <AreaChart data={revenueData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
+                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2}/>
                   <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
                 </linearGradient>
+                <linearGradient id="colorBenefice" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
+                  <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" strokeOpacity={0.5} />
               <XAxis 
                 dataKey="month" 
                 axisLine={false} 
                 tickLine={false} 
-                tick={{fill: '#94a3b8', fontSize: 12}} 
+                tick={{fill: '#64748b', fontSize: 12, fontWeight: 500}} 
                 dy={10}
               />
               <YAxis 
                 axisLine={false} 
                 tickLine={false} 
-                tick={{fill: '#94a3b8', fontSize: 12}}
+                tick={{fill: '#64748b', fontSize: 12, fontWeight: 500}}
+                tickFormatter={formatYAxis}
                 dx={-10}
               />
-              <Tooltip 
-                contentStyle={{ 
-                  borderRadius: '12px', 
-                  border: 'none', 
-                  boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
-                  padding: '12px'
-                }}
-              />
+              <Tooltip content={<CustomTooltip />} />
               <Area 
                 type="monotone" 
-                dataKey="revenu" 
+                dataKey="Revenus" 
                 stroke="#3b82f6" 
                 strokeWidth={3}
                 fillOpacity={1} 
@@ -266,10 +298,19 @@ export default function Dashboard() {
               />
               <Area 
                 type="monotone" 
-                dataKey="depense" 
-                stroke="#e2e8f0" 
+                dataKey="Bénéfice Net" 
+                stroke="#10b981" 
+                strokeWidth={3}
+                fillOpacity={1} 
+                fill="url(#colorBenefice)" 
+                animationDuration={1500}
+              />
+              <Area 
+                type="monotone" 
+                dataKey="Dépenses" 
+                stroke="#f87171" 
                 strokeWidth={2}
-                strokeDasharray="5 5"
+                strokeDasharray="4 4"
                 fill="none" 
                 animationDuration={1500}
               />
