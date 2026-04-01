@@ -1,36 +1,77 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Finance & Multi-Store Management System
 
-## Getting Started
+Une application moderne de gestion financière, d'inventaire et d'analyse marketing conçue pour les commerçants et les gestionnaires de points de vente. Optimisée pour la productivité et la clarté des données.
 
-First, run the development server:
+![Next.js](https://img.shields.io/badge/Next.js-15-black?style=for-the-badge&logo=next.js)
+![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748?style=for-the-badge&logo=prisma)
+![TailwindCSS](https://img.shields.io/badge/TailwindCSS-v4-38B2AC?style=for-the-badge&logo=tailwind-css)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## 🚀 Fonctionnalités Clés
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 📦 Gestion d'Inventaire & Ventes
+- **Suivi en temps réel** : Les niveaux de stock sont automatiquement déduits lors de chaque vente.
+- **Facturation instantanée** : Génération de tickets de caisse formatés avec calcul automatique du montant à rendre.
+- **Partage Social** : Envoyez vos factures directement à vos clients via **WhatsApp**, **Telegram** ou partage natif (Instagram/SMS).
+- **Historique complet** : Journalisation détaillée de chaque transaction et mouvement de stock.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 📊 Analyses & KPIs Financiers
+- **Tableau de bord dynamique** : Vue d'ensemble du chiffre d'affaires, des dépenses et de la marge nette.
+- **Soldes Intermédiaires de Gestion (SIG)** : Calculs comptables automatisés pour suivre la santé de l'entreprise.
+- **Analyse par Cohorte** : Suivi de la fidélisation client et du cycle de vie des produits.
+- **Visualisations** : Graphiques interactifs pour les tendances de ventes et la répartition par catégorie.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 📣 Marketing & CRM
+- **ROI Marketing** : Liez vos campagnes publicitaires (Facebook, Ads, etc.) à vos ventes de produits pour mesurer le retour sur investissement exact.
+- **Gestion Clients** : Suivi des sources d'acquisition et historique d'achat par client.
 
-## Learn More
+### 🔐 Multi-Tenancy & Sécurité
+- **Multi-Boutiques** : Structure conçue pour gérer plusieurs magasins de manière isolée.
+- **Auth de Pointe** : Système d'authentification robuste avec gestion des rôles (Propriétaire, Manager, Staff).
 
-To learn more about Next.js, take a look at the following resources:
+## 🛠️ Stack Technique
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Frontend** : React 19, Next.js 15 (App Router).
+- **Styling** : CSS moderne avec animations fluides et support complet du mode sombre.
+- **Backend** : API Routes Next.js.
+- **Base de données** : PostgreSQL (Neon) via Prisma ORM.
+- **Icônes** : Lucide React.
+- **Validations** : Zod.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 🏁 Installation & Démarrage
 
-## Deploy on Vercel
+1. **Cloner le projet** :
+   ```bash
+   git clone https://github.com/votre-username/votre-repo.git
+   cd finance
+   ```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+2. **Installer les dépendances** :
+   ```bash
+   npm install
+   ```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+3. **Variables d'environnement** :
+   Créez un fichier `.env` à la racine et ajoutez votre URL de base de données :
+   ```env
+   DATABASE_URL="postgres://..."
+   NEXT_PUBLIC_APP_URL="http://localhost:3000"
+   ```
+
+4. **Initialiser la base de données** :
+   ```bash
+   npx prisma db push
+   npx prisma generate
+   ```
+
+5. **Lancer le mode développement** :
+   ```bash
+   npm run dev
+   ```
+
+## 📄 Licence
+
+Distribué sous la licence MIT. Voir `LICENSE` pour plus d'informations.
+
+---
+*Conçu avec ❤️ pour simplifier la gestion de votre business.*

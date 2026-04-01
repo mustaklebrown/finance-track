@@ -1,65 +1,322 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import React, { useState, useEffect } from 'react';
+import { 
+  TrendingUp, 
+  Activity, 
+  Users, 
+  DollarSign, 
+  Calendar,
+  LayoutDashboard,
+  Filter,
+  Package,
+  Loader2
+} from 'lucide-react';
+import Link from 'next/link';
+import { 
+  AreaChart, 
+  Area, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend
+} from 'recharts';
+import { KpiCard } from '@/components/dashboard/KpiCard';
+import { cn } from '@/lib/utils';
+
+export default function Dashboard() {
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<any>(null);
+  const [revenueData, setRevenueData] = useState<any[]>([]);
+  const [categoryData, setCategoryData] = useState<any[]>([]);
+  const [store, setStore] = useState<any>(null);
+  
+  // Nouveaux states pour les KPIs dynamiques
+  const [currentMonthData, setCurrentMonthData] = useState<any>(null);
+  const [prevMonthData, setPrevMonthData] = useState<any>(null);
+
+  useEffect(() => {
+    const initDashboard = async () => {
+      try {
+        setLoading(true);
+        // 1. Get default store
+        const storeRes = await fetch('/api/stores');
+        if (!storeRes.ok) throw new Error('Could not find store');
+        const storeData = await storeRes.json();
+        setStore(storeData);
+
+        const storeId = storeData.id;
+        
+        // 2. Fetch KPIs (Current Month vs Previous Month for real trends)
+        const now = new Date();
+        const firstDayThisMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+        const lastDayThisMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
+        
+        const firstDayLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
+        const lastDayLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59).toISOString();
+
+        const [kpiResThis, kpiResLast] = await Promise.all([
+          fetch(`/api/dashboard/kpis?storeId=${storeId}&startDate=${firstDayThisMonth}&endDate=${lastDayThisMonth}`),
+          fetch(`/api/dashboard/kpis?storeId=${storeId}&startDate=${firstDayLastMonth}&endDate=${lastDayLastMonth}`)
+        ]);
+
+        const [kpiThis, kpiLast] = await Promise.all([kpiResThis.json(), kpiResLast.json()]);
+        
+        setData(kpiThis); // fallback for generic data
+        setCurrentMonthData(kpiThis);
+        setPrevMonthData(kpiLast);
+
+        // 3. Fetch Revenue vs Expenses
+        const revRes = await fetch(`/api/dashboard/charts/revenue-expenses?storeId=${storeId}&year=2025`);
+        const revData = await revRes.json();
+        setRevenueData(revData.map((d: any) => ({
+          month: d.month,
+          revenu: d.revenue,
+          depense: d.expenses
+        })));
+
+        // 4. Fetch Category Sales
+        const catRes = await fetch(`/api/dashboard/charts/sales-category?storeId=${storeId}`);
+        const catData = await catRes.json();
+        const colors = ['#0ea5e9', '#8b5cf6', '#f59e0b', '#10b981', '#f43f5e'];
+        setCategoryData(catData.map((d: any, i: number) => ({
+          name: d.category,
+          value: d.revenue,
+          fill: colors[i % colors.length]
+        })));
+
+      } catch (error) {
+        console.error('Failed to load dashboard data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initDashboard();
+  }, []);
+
+  if (loading && !data) {
+    return (
+      <div className="flex flex-1 items-center justify-center p-8 bg-zinc-50 dark:bg-black">
+        <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <div className="min-h-screen bg-zinc-50 dark:bg-black p-4 md:p-8 font-sans">
+      <header className="mb-10 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 text-primary font-bold">
+            <LayoutDashboard className="h-6 w-6" />
+            <h1 className="text-2xl font-bold tracking-tight bg-linear-to-r from-zinc-900 to-zinc-500 bg-clip-text text-transparent dark:from-zinc-50 dark:to-zinc-500">
+              {store?.name || 'Finance Hub'}
+            </h1>
+          </div>
+          <p className="text-zinc-500 text-sm">Vue d'ensemble de la performance commerciale</p>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <Link href="/products" className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-600 shadow-sm transition-hover hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
+            <Package className="h-4 w-4" />
+            Produits
+          </Link>
+          <button className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-600 shadow-sm transition-hover hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400 capitalize">
+            <Calendar className="h-4 w-4" />
+            {new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
+          </button>
+          <button className="flex items-center gap-2 rounded-lg bg-black text-white px-4 py-2 text-sm font-semibold shadow-sm transition-opacity hover:opacity-90 dark:bg-zinc-50 dark:text-black">
+            <Filter className="h-4 w-4" />
+            Filtres
+          </button>
+        </div>
+      </header>
+
+      {/* KPI Section */}
+      <div className="mb-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <KpiCard 
+          title="Chiffre d'Affaires" 
+          value={currentMonthData ? `${currentMonthData.margins.totalRevenue.toLocaleString()} KMF` : '...'} 
+          icon={DollarSign} 
+          trend={
+             currentMonthData && prevMonthData && prevMonthData.margins.totalRevenue > 0
+               ? { 
+                   value: Math.abs(((currentMonthData.margins.totalRevenue - prevMonthData.margins.totalRevenue) / prevMonthData.margins.totalRevenue) * 100), 
+                   isPositive: currentMonthData.margins.totalRevenue >= prevMonthData.margins.totalRevenue 
+                 }
+               : { value: 0, isPositive: true }
+          }
+          isLoading={loading}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+        <KpiCard 
+          title="Marge Nette" 
+          value={currentMonthData ? `${currentMonthData.margins.netMargin.toLocaleString()} KMF` : '...'} 
+          description={`Taux: ${currentMonthData?.margins.netMarginPercentage.toFixed(1) || 0}%`}
+          icon={Activity} 
+          trend={
+             currentMonthData && prevMonthData && prevMonthData.margins.netMargin !== 0
+               ? { 
+                   value: Math.abs(((currentMonthData.margins.netMargin - prevMonthData.margins.netMargin) / Math.abs(prevMonthData.margins.netMargin)) * 100), 
+                   isPositive: currentMonthData.margins.netMargin >= prevMonthData.margins.netMargin 
+                 }
+               : { value: 0, isPositive: true }
+          }
+          isLoading={loading}
+        />
+        <KpiCard 
+          title="Coût d'Acq. Client (CAC)" 
+          value={currentMonthData ? `${currentMonthData.cac.cac.toFixed(2)} KMF` : '...'} 
+          description={`${currentMonthData?.cac.newCustomersCount || 0} nouveaux clients`}
+          icon={Users} 
+          trend={
+             currentMonthData && prevMonthData && prevMonthData.cac.cac > 0
+               ? { 
+                   value: Math.abs(((currentMonthData.cac.cac - prevMonthData.cac.cac) / prevMonthData.cac.cac) * 100), 
+                   isPositive: currentMonthData.cac.cac <= prevMonthData.cac.cac // For CAC, lower is better (positive trend usually implies improvement, so green if lower)
+                 }
+               : { value: 0, isPositive: true }
+          }
+          isLoading={loading}
+        />
+        <KpiCard 
+          title="Customer LTV" 
+          value={currentMonthData ? `${currentMonthData.ltv.ltv.toFixed(0)} KMF` : '...'} 
+          icon={TrendingUp} 
+          trend={
+             currentMonthData && prevMonthData && prevMonthData.ltv.ltv > 0
+               ? { 
+                   value: Math.abs(((currentMonthData.ltv.ltv - prevMonthData.ltv.ltv) / prevMonthData.ltv.ltv) * 100), 
+                   isPositive: currentMonthData.ltv.ltv >= prevMonthData.ltv.ltv 
+                 }
+               : { value: 0, isPositive: true }
+          }
+          isLoading={loading}
+        />
+      </div>
+
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* Revenue Area Chart */}
+        <div className="lg:col-span-2 rounded-2xl border border-zinc-100 bg-white p-6 shadow-sm dark:bg-zinc-900 dark:border-zinc-800">
+          <div className="mb-6 flex items-center justify-between">
+            <h3 className="text-lg font-semibold tracking-tight">Performance Financière</h3>
+            <div className="flex items-center gap-4 text-xs font-medium">
+              <div className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-blue-500" /> Ventes (Revenu)
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-zinc-200 dark:bg-zinc-700" /> Dépenses
+              </div>
+            </div>
+          </div>
+          <div className="h-[350px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={revenueData}>
+              <defs>
+                <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
+                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+              <XAxis 
+                dataKey="month" 
+                axisLine={false} 
+                tickLine={false} 
+                tick={{fill: '#94a3b8', fontSize: 12}} 
+                dy={10}
+              />
+              <YAxis 
+                axisLine={false} 
+                tickLine={false} 
+                tick={{fill: '#94a3b8', fontSize: 12}}
+                dx={-10}
+              />
+              <Tooltip 
+                contentStyle={{ 
+                  borderRadius: '12px', 
+                  border: 'none', 
+                  boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
+                  padding: '12px'
+                }}
+              />
+              <Area 
+                type="monotone" 
+                dataKey="revenu" 
+                stroke="#3b82f6" 
+                strokeWidth={3}
+                fillOpacity={1} 
+                fill="url(#colorRevenue)" 
+                animationDuration={1500}
+              />
+              <Area 
+                type="monotone" 
+                dataKey="depense" 
+                stroke="#e2e8f0" 
+                strokeWidth={2}
+                strokeDasharray="5 5"
+                fill="none" 
+                animationDuration={1500}
+              />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        {/* Categories Pie Chart */}
+        <div className="rounded-2xl border border-zinc-100 bg-white p-6 shadow-sm dark:bg-zinc-900 dark:border-zinc-800">
+          <h3 className="mb-6 text-lg font-semibold tracking-tight">Répartition par Catégorie</h3>
+          <div className="h-[300px] w-full flex items-center justify-center">
+            {categoryData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={categoryData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={8}
+                    dataKey="value"
+                  >
+                    {categoryData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} 
+                  />
+                  <Legend layout="horizontal" verticalAlign="bottom" align="center" />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="text-zinc-400 text-sm">Aucune donnée disponible</div>
+            )}
+          </div>
+          <div className="mt-4 space-y-3">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-zinc-500 font-medium">Performance Brute</span>
+              <span className={cn(
+                "rounded-full px-2 py-0.5 text-xs font-bold",
+                (data?.margins.grossMarginPercentage || 0) > 50 ? "bg-emerald-50 text-emerald-600" : "bg-blue-50 text-blue-600"
+              )}>
+                {data?.margins.grossMarginPercentage.toFixed(1) || 0}%
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-zinc-500 font-medium">Bénéfice Net</span>
+              <span className="font-bold text-zinc-900 dark:text-zinc-50">
+                {data?.margins.netMargin.toLocaleString() || 0} KMF
+              </span>
+            </div>
+          </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }
