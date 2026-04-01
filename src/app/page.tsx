@@ -39,6 +39,10 @@ export default function Dashboard() {
   // Nouveaux states pour les KPIs dynamiques
   const [currentMonthData, setCurrentMonthData] = useState<any>(null);
   const [prevMonthData, setPrevMonthData] = useState<any>(null);
+  
+  // New detailed states
+  const [performanceData, setPerformanceData] = useState<any>(null);
+  const [detailedCategories, setDetailedCategories] = useState<any[]>([]);
 
   useEffect(() => {
     const initDashboard = async () => {
@@ -89,6 +93,12 @@ export default function Dashboard() {
           value: d.revenue,
           fill: colors[i % colors.length]
         })));
+
+        // 5. Fetch Store Performance & Detailed Categories
+        const perfRes = await fetch(`/api/dashboard/performance?storeId=${storeId}&startDate=${firstDayThisMonth}&endDate=${lastDayThisMonth}`);
+        const perfJson = await perfRes.json();
+        setPerformanceData(perfJson.performance);
+        setDetailedCategories(perfJson.categories);
 
       } catch (error) {
         console.error('Failed to load dashboard data:', error);
@@ -314,6 +324,81 @@ export default function Dashboard() {
                 {data?.margins.netMargin.toLocaleString() || 0} KMF
               </span>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Store Performance & Category Analysis Details */}
+      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Top Products */}
+        <div className="rounded-2xl border border-zinc-100 bg-white p-6 shadow-sm dark:bg-zinc-900 dark:border-zinc-800">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold tracking-tight">Ventes par Produit (Top 5)</h3>
+            <div className="rounded-lg bg-zinc-50 dark:bg-zinc-800 px-3 py-1 text-xs font-bold text-zinc-500">Ce mois</div>
+          </div>
+          <div className="space-y-4">
+            {performanceData?.topProducts?.length > 0 ? (
+              performanceData.topProducts.map((p: any, i: number) => (
+                <div key={i} className="flex items-center justify-between group">
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-50 dark:bg-zinc-800 text-xs font-bold text-zinc-400 group-hover:bg-blue-50 group-hover:text-blue-500 transition-colors">
+                      {i + 1}
+                    </span>
+                    <div>
+                      <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{p.name}</p>
+                      <p className="text-xs text-zinc-500">{p.quantity} unités vendues</p>
+                    </div>
+                  </div>
+                  <p className="text-sm font-bold text-emerald-600">+{p.revenue.toLocaleString()} KMF</p>
+                </div>
+              ))
+            ) : (
+                <p className="py-8 text-center text-sm text-zinc-400">Aucune vente enregistrée ce mois</p>
+            )}
+          </div>
+          <div className="mt-6 pt-6 border-t border-zinc-50 dark:border-zinc-800 flex items-center justify-between text-sm">
+             <span className="text-zinc-500 font-medium italic">Panier Moyen:</span>
+             <span className="font-bold text-lg text-blue-600">{performanceData?.averageTicket.toLocaleString() || 0} KMF</span>
+          </div>
+        </div>
+
+        {/* Categories Analysis Table */}
+        <div className="rounded-2xl border border-zinc-100 bg-white p-6 shadow-sm dark:bg-zinc-900 dark:border-zinc-800">
+          <h3 className="mb-6 text-lg font-semibold tracking-tight">Rentabilité des Catégorie</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-zinc-50 dark:border-zinc-800">
+                  <th className="pb-3 font-semibold text-zinc-500">Catégorie</th>
+                  <th className="pb-3 font-semibold text-zinc-500 text-right">Volume</th>
+                  <th className="pb-3 font-semibold text-zinc-500 text-right">Marge %</th>
+                  <th className="pb-3 font-semibold text-zinc-500 text-right">Bénéfice</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800">
+                {detailedCategories.length > 0 ? (
+                  detailedCategories.map((cat: any) => (
+                    <tr key={cat.id} className="group hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
+                      <td className="py-4 font-semibold text-zinc-900 dark:text-zinc-100">{cat.name}</td>
+                      <td className="py-4 text-right text-zinc-500">{cat.quantity} units</td>
+                      <td className="py-4 text-right">
+                        <span className={cn(
+                          "px-2 py-0.5 rounded-full text-[10px] font-bold",
+                          cat.marginPercentage > 30 ? "bg-emerald-50 text-emerald-600" : "bg-blue-50 text-blue-600"
+                        )}>
+                          {cat.marginPercentage.toFixed(1)}%
+                        </span>
+                      </td>
+                      <td className="py-4 text-right font-mono font-bold text-zinc-700 dark:text-zinc-300">
+                        {cat.margin.toLocaleString()}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr><td colSpan={4} className="py-8 text-center text-zinc-400">Aucune catégorie analysée</td></tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>

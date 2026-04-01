@@ -142,4 +142,91 @@ export class KPIService {
       ltv: buyingCustomersCount > 0 ? totalRevenueFromCustomers / buyingCustomersCount : 0,
     };
   }
+
+  /**
+   * Performance globale du store
+   * Top produits, panier moyen
+   */
+  static async getStorePerformance(storeId: string, startDate: Date, endDate: Date) {
+    // 1. Panier Moyen (Average Ticket Value)
+    const salesAgg = await prisma.sale.aggregate({
+      _avg: { totalAmount: true },
+      _count: { id: true },
+      where: { storeId, createdAt: { gte: startDate, lte: endDate } }
+    });
+
+    const averageTicket = salesAgg._avg.totalAmount || 0;
+    const totalTransactions = salesAgg._count.id || 0;
+
+    // 2. Top Produits par Revenu
+    const topProductsRaw = await prisma.saleItem.groupBy({
+      by: ['productId'],
+      _sum: { quantity: true, unitPrice: true },
+      where: { sale: { storeId }, createdAt: { gte: startDate, lte: endDate } },
+      orderBy: { _sum: { unitPrice: 'desc' } },
+      take: 5
+    });
+
+    const topProducts = await Promise.all(topProductsRaw.map(async (item) => {
+      const product = await prisma.product.findUnique({
+        where: { id: item.productId },
+        select: { name: true }
+      });
+      return {
+        name: product?.name || 'Inconnu',
+        quantity: item._sum.quantity || 0,
+        revenue: (item._sum.unitPrice || 0) * (item._sum.quantity || 0) // Approximation based on total value recorded
+      };
+    }));
+
+    return {
+      averageTicket,
+      totalTransactions,
+      topProducts
+    };
+  }
+
+  /**
+   * Analyse détaillée par catégorie
+   * Marge par catégorie, volume vs valeur
+   */
+  static async getCategoryAnalysis(storeId: string) {
+    const categories = await prisma.category.findMany({
+      where: { storeId },
+      include: {
+        products: {
+          include: {
+            saleItems: true
+          }
+        }
+      }
+    });
+
+    const analysis = categories.map(cat => {
+      let revenue = 0;
+      let cost = 0;
+      let quantity = 0;
+
+      cat.products.forEach(prod => {
+        prod.saleItems.forEach(item => {
+          revenue += item.unitPrice * item.quantity;
+          cost += item.unitCost * item.quantity;
+          quantity += item.quantity;
+        });
+      });
+
+      const margin = revenue - cost;
+
+      return {
+        id: cat.id,
+        name: cat.name,
+        revenue,
+        quantity,
+        margin,
+        marginPercentage: revenue > 0 ? (margin / revenue) * 100 : 0
+      };
+    });
+
+    return analysis.sort((a, b) => b.revenue - a.revenue);
+  }
 }
