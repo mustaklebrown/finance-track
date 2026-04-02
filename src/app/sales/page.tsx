@@ -639,38 +639,48 @@ export default function SalesPage() {
                       const btn = document.getElementById('pdf-btn-icon');
                       if (btn) btn.classList.add('animate-pulse');
 
-                      // Clean import format
-                      const mod = await import('html2pdf.js');
-                      const html2pdf = mod.default ? mod.default : mod;
+                      const { domToJpeg } = await import('modern-screenshot');
+                      const { jsPDF } = await import('jspdf');
                       
                       const element = document.getElementById('invoice-content');
                       if (!element) return;
                       
                       const idText = (invoiceData.id || '').slice(0, 8).toUpperCase();
-                      const opt = {
-                        margin:       5,
-                        filename:     `Facture_${idText}.pdf`,
-                        image:        { type: 'jpeg', quality: 0.98 },
-                        html2canvas:  { scale: 2, useCORS: true },
-                        jsPDF:        { unit: 'mm', format: 'a5', orientation: 'portrait' }
-                      };
-                      
-                      // Using callback style to ensure UI responds immediately and bypasses gesture timeout
-                      html2pdf().set(opt).from(element).outputPdf('blob').then((pdfBlob: Blob) => {
-                        const file = new File([pdfBlob], opt.filename, { type: 'application/pdf' });
+                      const filename = `Facture_${idText}.pdf`;
+
+                      // Convert the DOM to an image representing the invoice to prevent html2canvas color function crashes
+                      domToJpeg(element, { 
+                        scale: 2, 
+                        backgroundColor: '#ffffff',
+                        filter: (node) => !node.hasAttribute?.('data-html2canvas-ignore')
+                      }).then((dataUrl) => {
+                        const pdf = new jsPDF({
+                          unit: 'mm',
+                          format: 'a5',
+                          orientation: 'portrait'
+                        });
+                        
+                        // Dimensions setup
+                        const imgProps = pdf.getImageProperties(dataUrl);
+                        const pdfWidth = 138;
+                        const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+                        
+                        pdf.addImage(dataUrl, 'JPEG', 5, 5, pdfWidth, pdfHeight);
+                        const pdfBlob = pdf.output('blob');
+                        
+                        const file = new File([pdfBlob], filename, { type: 'application/pdf' });
                         if (navigator.canShare && navigator.canShare({ files: [file] })) {
                           navigator.share({
-                            title: opt.filename,
+                            title: filename,
                             text: 'Voici votre facture en format PDF 🧾.',
                             files: [file],
                           }).catch((err) => {
                              console.error('Share rejected', err);
-                             // Fallback to direct download
-                             html2pdf().set(opt).from(element).save();
+                             pdf.save(filename);
                           });
                         } else {
-                          // Fallback: download locally
-                          html2pdf().set(opt).from(element).save();
+                          // Fallback: download locally if share violates scope
+                          pdf.save(filename);
                         }
                       });
                     } catch (error) {
