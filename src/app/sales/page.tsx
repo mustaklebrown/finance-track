@@ -15,7 +15,8 @@ import {
   Printer,
   Send,
   MessageCircle,
-  Share2
+  Share2,
+  FileText
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -532,13 +533,16 @@ export default function SalesPage() {
       )}
       {/* Invoice Modal */}
       {showInvoice && invoiceData && (
-        <div className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-zinc-100 dark:bg-black">
-          <div className="w-full max-w-md bg-white text-black p-8 rounded-lg shadow-xl print:shadow-none print:w-full print:max-w-none print:p-0">
-            <div className="text-center mb-6">
-              <h2 className="text-2xl font-bold">FACTURE</h2>
-              <p className="text-sm text-zinc-500">{new Date(invoiceData.createdAt || saleDate).toLocaleString('fr-FR')}</p>
-              <p className="text-sm text-zinc-500">Ticket #{invoiceData.id?.slice(0, 8).toUpperCase()}</p>
-            </div>
+        <div className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-zinc-100 dark:bg-black/80 backdrop-blur-sm overflow-y-auto">
+          <div className="w-full max-w-md bg-white text-black p-8 rounded-2xl shadow-2xl print:shadow-none print:w-full print:max-w-none print:p-0 my-auto">
+            
+            {/* The printable/PDF area */}
+            <div id="invoice-content" className="bg-white p-2">
+              <div className="text-center mb-6">
+                <h2 className="text-2xl font-bold">FACTURE</h2>
+                <p className="text-sm text-zinc-500">{new Date(invoiceData.createdAt || saleDate).toLocaleString('fr-FR')}</p>
+                <p className="text-sm text-zinc-500">Ticket #{invoiceData.id?.slice(0, 8).toUpperCase()}</p>
+              </div>
             
             <div className="border-t border-b border-zinc-200 py-4 mb-4">
               <table className="w-full text-sm">
@@ -591,30 +595,75 @@ export default function SalesPage() {
             <div className="mt-8 text-center text-xs text-zinc-500 border-t border-zinc-200 pt-4">
               <p>Merci de votre visite et à bientôt !</p>
             </div>
+            </div>
 
             {/* Social Share Buttons */}
-            <div className="mt-6 flex flex-col gap-2 print:hidden border-t border-zinc-100 pt-4">
-              <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest text-center mb-1">Partager la facture</p>
-              <div className="flex justify-center gap-4">
+            <div className="mt-6 flex flex-col gap-2 print:hidden border-t border-zinc-100 pt-4" data-html2canvas-ignore="true">
+              <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest text-center mb-3">Partager & Envoyer</p>
+              <div className="grid grid-cols-4 gap-2">
                 <button 
                   onClick={() => {
                     const text = encodeURIComponent(`🔖 *FACTURE*\nDate: ${new Date(invoiceData.createdAt || saleDate).toLocaleDateString('fr-FR')}\nTicket: #${invoiceData.id?.slice(0, 8).toUpperCase()}\n\n*Détails:*\n${(invoiceData.entries || invoiceData.items).map((item: any) => `- ${item.quantity}x ${item.product?.name}: ${(item.quantity * (item.unitPrice || item.price)).toLocaleString()} KMF`).join('\n')}\n\n*TOTAL: ${invoiceData.totalAmount.toLocaleString()} KMF*\n\nMerci de votre confiance !`);
                     window.open(`https://wa.me/?text=${text}`, '_blank');
                   }}
-                  className="p-2.5 rounded-full bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors"
-                  title="Partager sur WhatsApp"
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-zinc-50 hover:bg-emerald-50 text-zinc-500 hover:text-emerald-600 transition-colors"
                 >
                   <MessageCircle className="w-5 h-5" />
+                  <span className="text-[10px] font-medium">Texte WA</span>
                 </button>
                 <button 
                   onClick={() => {
                     const text = encodeURIComponent(`🔖 *FACTURE*\nTicket: #${invoiceData.id?.slice(0, 8).toUpperCase()}\nTotal: ${invoiceData.totalAmount.toLocaleString()} KMF`);
                     window.open(`https://t.me/share/url?url=${window.location.origin}&text=${text}`, '_blank');
                   }}
-                  className="p-2.5 rounded-full bg-blue-50 text-blue-500 hover:bg-blue-100 transition-colors"
-                  title="Partager sur Telegram"
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-zinc-50 hover:bg-blue-50 text-zinc-500 hover:text-blue-500 transition-colors"
                 >
                   <Send className="w-5 h-5" />
+                  <span className="text-[10px] font-medium">Telegram</span>
+                </button>
+                <button 
+                  onClick={async () => {
+                    try {
+                      // Dynamically import to avoid edge runtime issues
+                      const html2pdf = (await import('html2pdf.js')).default;
+                      const element = document.getElementById('invoice-content');
+                      if (!element) return;
+                      
+                      const btn = document.getElementById('pdf-btn-icon');
+                      if (btn) btn.classList.add('animate-pulse');
+
+                      const opt = {
+                        margin:       5,
+                        filename:     `Facture_${invoiceData.id?.slice(0, 8).toUpperCase()}.pdf`,
+                        image:        { type: 'jpeg', quality: 0.98 },
+                        html2canvas:  { scale: 2, useCORS: true },
+                        jsPDF:        { unit: 'mm', format: 'a5', orientation: 'portrait' }
+                      };
+                      
+                      const pdfBlob = await html2pdf().set(opt).from(element).outputPdf('blob');
+                      const file = new File([pdfBlob], opt.filename, { type: 'application/pdf' });
+                      
+                      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                        await navigator.share({
+                          title: opt.filename,
+                          text: 'Voici votre facture en format PDF 🧾.',
+                          files: [file],
+                        });
+                      } else {
+                        // Fallback: download locally
+                        html2pdf().set(opt).from(element).save();
+                      }
+                    } catch (error) {
+                      console.error('Failed to generate PDF', error);
+                    } finally {
+                      const btn = document.getElementById('pdf-btn-icon');
+                      if (btn) btn.classList.remove('animate-pulse');
+                    }
+                  }}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-zinc-50 hover:bg-rose-50 text-zinc-500 hover:text-rose-600 transition-colors"
+                >
+                  <FileText id="pdf-btn-icon" className="w-5 h-5" />
+                  <span className="text-[10px] font-medium">Envoyer PDF</span>
                 </button>
                 <button 
                   onClick={() => {
@@ -628,15 +677,15 @@ export default function SalesPage() {
                       alert('Le partage natif n\'est pas supporté sur ce navigateur.');
                     }
                   }}
-                  className="p-2.5 rounded-full bg-zinc-50 text-zinc-600 hover:bg-zinc-100 transition-colors"
-                  title="Autres options de partage"
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-zinc-50 hover:bg-zinc-200 text-zinc-500 hover:text-zinc-900 transition-colors"
                 >
                   <Share2 className="w-5 h-5" />
+                  <span className="text-[10px] font-medium">Plus</span>
                 </button>
               </div>
             </div>
             
-            <div className="mt-8 flex gap-3 print:hidden">
+            <div className="mt-6 flex gap-3 print:hidden" data-html2canvas-ignore="true">
               <button 
                 onClick={() => setShowInvoice(false)}
                 className="flex-1 px-4 py-2 border border-zinc-200 rounded-lg text-sm font-medium hover:bg-zinc-50 text-black"
@@ -645,10 +694,10 @@ export default function SalesPage() {
               </button>
               <button 
                 onClick={() => window.print()}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-zinc-800"
+                className="flex-[2] flex items-center justify-center gap-2 px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-zinc-800"
               >
                 <Printer className="w-4 h-4" />
-                Imprimer
+                Imprimer le Ticket
               </button>
             </div>
           </div>
