@@ -75,29 +75,73 @@ export default function Dashboard() {
   const [performanceData, setPerformanceData] = useState<any>(null);
   const [detailedCategories, setDetailedCategories] = useState<any[]>([]);
 
-  const fetchDashboardData = async (storeId: string) => {
+  // Time filter state
+  const [period, setPeriod] = useState<string>('THIS_MONTH');
+
+  const fetchDashboardData = async (storeId: string, customPeriod?: string) => {
     try {
       setLoading(true);
-      // 2. Fetch KPIs (Current Month vs Previous Month for real trends)
-      const now = new Date();
-      const firstDayThisMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-      const lastDayThisMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
+      const activePeriod = customPeriod || period;
       
-      const firstDayLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
-      const lastDayLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59).toISOString();
+      const now = new Date();
+      let firstDayThisPeriod = now.toISOString();
+      let lastDayThisPeriod = now.toISOString();
+      let firstDayLastPeriod = now.toISOString();
+      let lastDayLastPeriod = now.toISOString();
+
+      if (activePeriod === 'TODAY') {
+        firstDayThisPeriod = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0).toISOString();
+        lastDayThisPeriod = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString();
+        
+        const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+        firstDayLastPeriod = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 0, 0, 0).toISOString();
+        lastDayLastPeriod = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 23, 59, 59).toISOString();
+      } else if (activePeriod === 'LAST_7_DAYS') {
+        const last7 = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+        firstDayThisPeriod = new Date(last7.getFullYear(), last7.getMonth(), last7.getDate(), 0, 0, 0).toISOString();
+        lastDayThisPeriod = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString();
+        
+        const last14 = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 14);
+        firstDayLastPeriod = new Date(last14.getFullYear(), last14.getMonth(), last14.getDate(), 0, 0, 0).toISOString();
+        lastDayLastPeriod = new Date(last7.getFullYear(), last7.getMonth(), last7.getDate() - 1, 23, 59, 59).toISOString();
+      } else if (activePeriod === 'THIS_MONTH') {
+        firstDayThisPeriod = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+        lastDayThisPeriod = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
+        
+        firstDayLastPeriod = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
+        lastDayLastPeriod = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59).toISOString();
+      } else if (activePeriod === 'LAST_MONTH') {
+        firstDayThisPeriod = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
+        lastDayThisPeriod = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59).toISOString();
+        
+        firstDayLastPeriod = new Date(now.getFullYear(), now.getMonth() - 2, 1).toISOString();
+        lastDayLastPeriod = new Date(now.getFullYear(), now.getMonth() - 1, 0, 23, 59, 59).toISOString();
+      } else if (activePeriod === 'THIS_YEAR') {
+        firstDayThisPeriod = new Date(now.getFullYear(), 0, 1).toISOString();
+        lastDayThisPeriod = new Date(now.getFullYear(), 11, 31, 23, 59, 59).toISOString();
+        
+        firstDayLastPeriod = new Date(now.getFullYear() - 1, 0, 1).toISOString();
+        lastDayLastPeriod = new Date(now.getFullYear() - 1, 11, 31, 23, 59, 59).toISOString();
+      } else if (activePeriod === 'ALL_TIME') {
+        firstDayThisPeriod = new Date(2000, 0, 1).toISOString();
+        lastDayThisPeriod = new Date(now.getFullYear(), 11, 31, 23, 59, 59).toISOString();
+        firstDayLastPeriod = firstDayThisPeriod; // no trend comparison
+        lastDayLastPeriod = lastDayThisPeriod;
+      }
 
       const [kpiResThis, kpiResLast] = await Promise.all([
-        fetch(`/api/dashboard/kpis?storeId=${storeId}&startDate=${firstDayThisMonth}&endDate=${lastDayThisMonth}`),
-        fetch(`/api/dashboard/kpis?storeId=${storeId}&startDate=${firstDayLastMonth}&endDate=${lastDayLastMonth}`)
+        fetch(`/api/dashboard/kpis?storeId=${storeId}&startDate=${firstDayThisPeriod}&endDate=${lastDayThisPeriod}`),
+        fetch(`/api/dashboard/kpis?storeId=${storeId}&startDate=${firstDayLastPeriod}&endDate=${lastDayLastPeriod}`)
       ]);
 
       const [kpiThis, kpiLast] = await Promise.all([kpiResThis.json(), kpiResLast.json()]);
       
       setData(kpiThis); // fallback for generic data
       setCurrentMonthData(kpiThis);
-      setPrevMonthData(kpiLast);
+      // If ALL_TIME, avoid fake trends
+      setPrevMonthData(activePeriod === 'ALL_TIME' ? kpiThis : kpiLast);
 
-      // 3. Fetch Revenue vs Expenses
+      // 3. Fetch Revenue vs Expenses (Keep year-driven or period driven if API supports)
       const revRes = await fetch(`/api/dashboard/charts/revenue-expenses?storeId=${storeId}&year=${now.getFullYear()}`);
       const revData = await revRes.json();
       setRevenueData(revData.map((d: any) => ({
@@ -108,7 +152,7 @@ export default function Dashboard() {
       })));
 
       // 4. Fetch Category Sales
-      const catRes = await fetch(`/api/dashboard/charts/sales-category?storeId=${storeId}`);
+      const catRes = await fetch(`/api/dashboard/charts/sales-category?storeId=${storeId}&startDate=${firstDayThisPeriod}&endDate=${lastDayThisPeriod}`);
       const catData = await catRes.json();
       const colors = ['#0ea5e9', '#8b5cf6', '#f59e0b', '#10b981', '#f43f5e'];
       setCategoryData(catData.map((d: any, i: number) => ({
@@ -118,7 +162,7 @@ export default function Dashboard() {
       })));
 
       // 5. Fetch Store Performance & Detailed Categories
-      const perfRes = await fetch(`/api/dashboard/performance?storeId=${storeId}&startDate=${firstDayThisMonth}&endDate=${lastDayThisMonth}`);
+      const perfRes = await fetch(`/api/dashboard/performance?storeId=${storeId}&startDate=${firstDayThisPeriod}&endDate=${lastDayThisPeriod}`);
       const perfJson = await perfRes.json();
       setPerformanceData(perfJson.performance);
       setDetailedCategories(perfJson.categories);
@@ -207,14 +251,26 @@ export default function Dashboard() {
             <Package className="h-4 w-4" />
             Produits
           </Link>
-          <button className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-600 shadow-sm transition-hover hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400 capitalize">
-            <Calendar className="h-4 w-4" />
-            {new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
-          </button>
-          <button className="flex items-center gap-2 rounded-lg bg-black text-white px-4 py-2 text-sm font-semibold shadow-sm transition-opacity hover:opacity-90 dark:bg-zinc-50 dark:text-black">
-            <Filter className="h-4 w-4" />
-            Filtres
-          </button>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-zinc-500">
+              <Calendar className="h-4 w-4" />
+            </div>
+            <select
+              value={period}
+              onChange={(e) => {
+                setPeriod(e.target.value);
+                if (store?.id) fetchDashboardData(store.id, e.target.value);
+              }}
+              className="appearance-none h-9 rounded-lg border border-zinc-200 bg-white pl-9 pr-8 text-sm font-semibold text-zinc-900 shadow-sm outline-none transition-all hover:bg-zinc-50 focus:ring-2 focus:ring-zinc-900/5 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800 cursor-pointer"
+            >
+              <option value="TODAY">Aujourd'hui</option>
+              <option value="LAST_7_DAYS">7 derniers jours</option>
+              <option value="THIS_MONTH">Ce mois-ci</option>
+              <option value="LAST_MONTH">Mois dernier</option>
+              <option value="THIS_YEAR">Cette année</option>
+              <option value="ALL_TIME">Tout le temps</option>
+            </select>
+          </div>
         </div>
       </header>
 
