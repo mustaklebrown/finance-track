@@ -15,11 +15,33 @@ export const auth = betterAuth({
                 type: "string",
                 required: false,
                 defaultValue: "STAFF",
-                input: false // Don't allow user to set their role on signup (should be set by admin or invite)
+                input: false
             },
             storeId: {
                 type: "string",
-                required: true,
+                required: false, // Made optional for the signup payload so we can generate it
+            }
+        }
+    },
+    databaseHooks: {
+        user: {
+            create: {
+                before: async (user) => {
+                    // Create a default store for the new registrant
+                    const store = await prisma.store.create({
+                        data: {
+                            name: `Boutique de ${user.name || 'Nouveau Propriétaire'}`,
+                        }
+                    });
+                    
+                    return {
+                        data: {
+                            ...user,
+                            storeId: store.id,   // Assign the newly created store to this user
+                            role: 'OWNER',       // The creator of the account becomes the OWNER
+                        }
+                    };
+                }
             }
         }
     },
