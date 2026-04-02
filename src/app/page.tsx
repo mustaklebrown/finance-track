@@ -65,6 +65,7 @@ export default function Dashboard() {
   const [revenueData, setRevenueData] = useState<any[]>([]);
   const [categoryData, setCategoryData] = useState<any[]>([]);
   const [store, setStore] = useState<any>(null);
+  const [availableStores, setAvailableStores] = useState<any[]>([]);
   
   // Nouveaux states pour les KPIs dynamiques
   const [currentMonthData, setCurrentMonthData] = useState<any>(null);
@@ -74,6 +75,61 @@ export default function Dashboard() {
   const [performanceData, setPerformanceData] = useState<any>(null);
   const [detailedCategories, setDetailedCategories] = useState<any[]>([]);
 
+  const fetchDashboardData = async (storeId: string) => {
+    try {
+      setLoading(true);
+      // 2. Fetch KPIs (Current Month vs Previous Month for real trends)
+      const now = new Date();
+      const firstDayThisMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      const lastDayThisMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
+      
+      const firstDayLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
+      const lastDayLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59).toISOString();
+
+      const [kpiResThis, kpiResLast] = await Promise.all([
+        fetch(`/api/dashboard/kpis?storeId=${storeId}&startDate=${firstDayThisMonth}&endDate=${lastDayThisMonth}`),
+        fetch(`/api/dashboard/kpis?storeId=${storeId}&startDate=${firstDayLastMonth}&endDate=${lastDayLastMonth}`)
+      ]);
+
+      const [kpiThis, kpiLast] = await Promise.all([kpiResThis.json(), kpiResLast.json()]);
+      
+      setData(kpiThis); // fallback for generic data
+      setCurrentMonthData(kpiThis);
+      setPrevMonthData(kpiLast);
+
+      // 3. Fetch Revenue vs Expenses
+      const revRes = await fetch(`/api/dashboard/charts/revenue-expenses?storeId=${storeId}&year=${now.getFullYear()}`);
+      const revData = await revRes.json();
+      setRevenueData(revData.map((d: any) => ({
+        month: d.month,
+        Revenus: d.revenue,
+        Dépenses: d.expenses,
+        'Bénéfice Net': d.revenue - d.expenses
+      })));
+
+      // 4. Fetch Category Sales
+      const catRes = await fetch(`/api/dashboard/charts/sales-category?storeId=${storeId}`);
+      const catData = await catRes.json();
+      const colors = ['#0ea5e9', '#8b5cf6', '#f59e0b', '#10b981', '#f43f5e'];
+      setCategoryData(catData.map((d: any, i: number) => ({
+        name: d.category,
+        value: d.revenue,
+        fill: colors[i % colors.length]
+      })));
+
+      // 5. Fetch Store Performance & Detailed Categories
+      const perfRes = await fetch(`/api/dashboard/performance?storeId=${storeId}&startDate=${firstDayThisMonth}&endDate=${lastDayThisMonth}`);
+      const perfJson = await perfRes.json();
+      setPerformanceData(perfJson.performance);
+      setDetailedCategories(perfJson.categories);
+
+    } catch (error) {
+      console.error('Failed to load dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     const initDashboard = async () => {
       try {
@@ -82,7 +138,11 @@ export default function Dashboard() {
         const storeRes = await fetch('/api/stores');
         if (!storeRes.ok) throw new Error('Could not find store');
         const storesData = await storeRes.json();
-        const activeStore = Array.isArray(storesData) ? storesData[0] : storesData;
+        
+        const storesArray = Array.isArray(storesData) ? storesData : [storesData];
+        setAvailableStores(storesArray);
+        
+        const activeStore = storesArray[0];
         setStore(activeStore);
 
         const storeId = activeStore?.id;
@@ -91,60 +151,24 @@ export default function Dashboard() {
             return;
         }
         
-        // 2. Fetch KPIs (Current Month vs Previous Month for real trends)
-        const now = new Date();
-        const firstDayThisMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-        const lastDayThisMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
-        
-        const firstDayLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
-        const lastDayLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59).toISOString();
-
-        const [kpiResThis, kpiResLast] = await Promise.all([
-          fetch(`/api/dashboard/kpis?storeId=${storeId}&startDate=${firstDayThisMonth}&endDate=${lastDayThisMonth}`),
-          fetch(`/api/dashboard/kpis?storeId=${storeId}&startDate=${firstDayLastMonth}&endDate=${lastDayLastMonth}`)
-        ]);
-
-        const [kpiThis, kpiLast] = await Promise.all([kpiResThis.json(), kpiResLast.json()]);
-        
-        setData(kpiThis); // fallback for generic data
-        setCurrentMonthData(kpiThis);
-        setPrevMonthData(kpiLast);
-
-        // 3. Fetch Revenue vs Expenses
-        const revRes = await fetch(`/api/dashboard/charts/revenue-expenses?storeId=${storeId}&year=${now.getFullYear()}`);
-        const revData = await revRes.json();
-        setRevenueData(revData.map((d: any) => ({
-          month: d.month,
-          Revenus: d.revenue,
-          Dépenses: d.expenses,
-          'Bénéfice Net': d.revenue - d.expenses
-        })));
-
-        // 4. Fetch Category Sales
-        const catRes = await fetch(`/api/dashboard/charts/sales-category?storeId=${storeId}`);
-        const catData = await catRes.json();
-        const colors = ['#0ea5e9', '#8b5cf6', '#f59e0b', '#10b981', '#f43f5e'];
-        setCategoryData(catData.map((d: any, i: number) => ({
-          name: d.category,
-          value: d.revenue,
-          fill: colors[i % colors.length]
-        })));
-
-        // 5. Fetch Store Performance & Detailed Categories
-        const perfRes = await fetch(`/api/dashboard/performance?storeId=${storeId}&startDate=${firstDayThisMonth}&endDate=${lastDayThisMonth}`);
-        const perfJson = await perfRes.json();
-        setPerformanceData(perfJson.performance);
-        setDetailedCategories(perfJson.categories);
-
+        await fetchDashboardData(storeId);
       } catch (error) {
-        console.error('Failed to load dashboard data:', error);
-      } finally {
+        console.error('Failed to init dashboard:', error);
         setLoading(false);
       }
     };
 
     initDashboard();
   }, []);
+
+  const handleStoreChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedId = e.target.value;
+    const s = availableStores.find(st => st.id === selectedId);
+    if (s) {
+      setStore(s);
+      fetchDashboardData(selectedId);
+    }
+  };
 
   if (loading && !data) {
     return (
@@ -168,6 +192,17 @@ export default function Dashboard() {
         </div>
         
         <div className="flex items-center gap-2">
+          {availableStores.length > 1 && (
+            <select
+              value={store?.id || ''}
+              onChange={handleStoreChange}
+              className="mr-2 h-9 rounded-lg border border-zinc-200 bg-white/50 px-3 text-sm font-semibold text-zinc-900 shadow-sm outline-none transition-all hover:bg-zinc-50 focus:ring-2 focus:ring-zinc-900/5 dark:border-zinc-800 dark:bg-zinc-900/50 dark:text-zinc-100 dark:hover:bg-zinc-800"
+            >
+              {availableStores.map(s => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          )}
           <Link href="/products" className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-600 shadow-sm transition-hover hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
             <Package className="h-4 w-4" />
             Produits
