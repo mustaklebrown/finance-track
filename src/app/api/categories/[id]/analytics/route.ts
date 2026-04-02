@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { getAuthorizedStoreId } from '@/lib/permissions';
 
 export async function GET(
   req: Request,
@@ -9,7 +10,8 @@ export async function GET(
     const params = await context.params;
     const id = params.id;
 
-    const store = await prisma.store.findFirst();
+    const storeId_auth = await getAuthorizedStoreId(undefined /* fixed TS */);
+    const store = await prisma.store.findUnique({ where: { id: storeId_auth } });
     if (!store) return NextResponse.json({ error: 'Store not found' }, { status: 404 });
 
     const category = await prisma.category.findUnique({

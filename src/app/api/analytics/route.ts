@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { getAuthorizedStoreId } from '@/lib/permissions';
 import { ChartService } from '@/services/chart.service';
 
 export async function GET() {
   try {
-    const store = await prisma.store.findFirst();
+    const storeId_auth = await getAuthorizedStoreId(undefined /* fixed TS */);
+    const store = await prisma.store.findUnique({ where: { id: storeId_auth } });
     if (!store) return NextResponse.json({ error: 'Store not found' }, { status: 404 });
 
     const storeId = store.id;

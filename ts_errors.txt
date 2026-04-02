@@ -1,0 +1,11 @@
+next.config.ts(9,3): error TS2353: Object literal may only specify known properties, and 'eslint' does not exist in type 'NextConfig'.
+src/app/api/analytics/route.ts(8,60): error TS2304: Cannot find name 'req'.
+src/app/api/analytics/route.ts(8,82): error TS2304: Cannot find name 'req'.
+src/app/api/categories/route.ts(10,60): error TS2304: Cannot find name 'req'.
+src/app/api/categories/route.ts(10,82): error TS2304: Cannot find name 'req'.
+src/app/api/expenses/route.ts(41,60): error TS2304: Cannot find name 'req'.
+src/app/api/expenses/route.ts(41,82): error TS2304: Cannot find name 'req'.
+src/app/api/products/route.ts(10,60): error TS2304: Cannot find name 'req'.
+src/app/api/products/route.ts(10,82): error TS2304: Cannot find name 'req'.
+src/app/api/sales/route.ts(82,60): error TS2304: Cannot find name 'req'.
+src/app/api/sales/route.ts(82,82): error TS2304: Cannot find name 'req'.

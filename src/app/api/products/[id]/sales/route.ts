@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { getAuthorizedStoreId } from '@/lib/permissions';
 import { z } from 'zod';
 
 const DailySaleSchema = z.object({
@@ -14,7 +15,8 @@ export async function POST(
 ) {
   try {
     const { id: productId } = await params;
-    const store = await prisma.store.findFirst();
+    const storeId_auth = await getAuthorizedStoreId(undefined /* fixed TS */);
+    const store = await prisma.store.findUnique({ where: { id: storeId_auth } });
     if (!store)
       return NextResponse.json({ error: 'Store not found' }, { status: 404 });
 

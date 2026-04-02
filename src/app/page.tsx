@@ -81,10 +81,15 @@ export default function Dashboard() {
         // 1. Get default store
         const storeRes = await fetch('/api/stores');
         if (!storeRes.ok) throw new Error('Could not find store');
-        const storeData = await storeRes.json();
-        setStore(storeData);
+        const storesData = await storeRes.json();
+        const activeStore = Array.isArray(storesData) ? storesData[0] : storesData;
+        setStore(activeStore);
 
-        const storeId = storeData.id;
+        const storeId = activeStore?.id;
+        if (!storeId) {
+            setLoading(false);
+            return;
+        }
         
         // 2. Fetch KPIs (Current Month vs Previous Month for real trends)
         const now = new Date();

@@ -37,3 +37,23 @@ export async function requireRole(minRole: Role) {
 export function hasPermission(userRole: Role, minRole: Role) {
   return roleHierarchy[userRole] >= roleHierarchy[minRole];
 }
+
+/**
+ * Ensures the request is sandboxed to the correct store.
+ * - STAFF/MANAGER: Always locked to their session.user.storeId.
+ * - OWNER: Can optionally view other stores by providing a storeId query param.
+ */
+export async function getAuthorizedStoreId(req?: Request) {
+  const session = await getSession();
+  if (!session) throw new Error("Unauthorized");
+  
+  const { role, storeId: userStoreId } = session.user as any;
+  
+  if (role === "OWNER" && req) {
+    const url = new URL(req.url);
+    const queryStoreId = url.searchParams.get("storeId");
+    if (queryStoreId) return queryStoreId;
+  }
+  
+  return userStoreId;
+}

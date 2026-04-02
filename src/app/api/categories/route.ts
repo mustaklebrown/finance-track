@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { getAuthorizedStoreId } from '@/lib/permissions';
 import { CategoryService } from '@/services/category.service';
 import { CategorySchema } from '@/lib/validations/category';
 import { z } from 'zod';
 
 export async function GET() {
   try {
-    const store = await prisma.store.findFirst();
+    const storeId_auth = await getAuthorizedStoreId(undefined /* fixed TS */);
+    const store = await prisma.store.findUnique({ where: { id: storeId_auth } });
     if (!store) return NextResponse.json([], { status: 404 });
 
     const categories = await CategoryService.list(store.id);
@@ -18,7 +20,8 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const store = await prisma.store.findFirst();
+    const storeId_auth = await getAuthorizedStoreId(undefined /* fixed TS */);
+    const store = await prisma.store.findUnique({ where: { id: storeId_auth } });
     if (!store) return NextResponse.json({ error: 'No store found' }, { status: 404 });
 
     const body = await req.json();

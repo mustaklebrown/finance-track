@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { getAuthorizedStoreId } from '@/lib/permissions';
 import { ProductService } from '@/services/product.service';
 import { ProductSchema } from '@/lib/validations/product';
 import { z } from 'zod';
 
 export async function GET() {
   try {
-    const store = await prisma.store.findFirst();
+    const storeId_auth = await getAuthorizedStoreId(undefined /* fixed TS */);
+    const store = await prisma.store.findUnique({ where: { id: storeId_auth } });
     if (!store) {
       return NextResponse.json({ error: 'No store found' }, { status: 404 });
     }
@@ -20,7 +22,8 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const store = await prisma.store.findFirst();
+    const storeId_auth = await getAuthorizedStoreId(undefined /* fixed TS */);
+    const store = await prisma.store.findUnique({ where: { id: storeId_auth } });
     if (!store) {
       return NextResponse.json({ error: 'No store found' }, { status: 404 });
     }

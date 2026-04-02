@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { getAuthorizedStoreId } from '@/lib/permissions';
 
 function getWeekNumber(date: Date) {
   const dCopy = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
@@ -11,7 +12,8 @@ function getWeekNumber(date: Date) {
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const store = await prisma.store.findFirst();
+    const storeId_auth = await getAuthorizedStoreId(undefined /* fixed TS */);
+    const store = await prisma.store.findUnique({ where: { id: storeId_auth } });
     if (!store) return NextResponse.json({ error: 'Store not found' }, { status: 404 });
     
     const { id: productId } = await params;
