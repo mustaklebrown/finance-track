@@ -282,7 +282,7 @@ export default function SalesPage() {
                 <th className="px-6 py-4 font-semibold text-zinc-600 dark:text-zinc-400">Date</th>
                 <th className="px-6 py-4 font-semibold text-zinc-600 dark:text-zinc-400">Produits</th>
                 <th className="px-6 py-4 font-semibold text-zinc-600 dark:text-zinc-400 text-right">Total</th>
-                <th className="px-6 py-4 text-right">Actions</th>
+                <th className="px-6 py-4 text-right sticky right-0 z-10 bg-zinc-50/50 dark:bg-zinc-900/50 backdrop-blur-sm shadow-[-10px_0_15px_-5px_rgba(0,0,0,0.05)]">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -315,8 +315,8 @@ export default function SalesPage() {
                     <td className="px-6 py-4 text-right font-mono font-bold text-emerald-600 whitespace-nowrap">
                       + {sale.totalAmount.toLocaleString()} KMF
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <td className="px-6 py-4 text-right sticky right-0 z-10 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-xs transition-colors group-hover:bg-emerald-50/90 dark:group-hover:bg-emerald-950/90 border-l border-zinc-100 dark:border-zinc-800/50">
+                      <div className="flex items-center justify-end gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                         <button 
                           onClick={() => {
                             setInvoiceData(sale);

@@ -163,7 +163,7 @@ export default function CategoriesPage() {
               <tr className="border-b border-zinc-100 bg-zinc-50/50 dark:border-zinc-800 dark:bg-zinc-900/50">
                 <th className="px-6 py-4 font-semibold text-zinc-600 dark:text-zinc-400">Nom</th>
                 <th className="px-6 py-4 font-semibold text-zinc-600 dark:text-zinc-400">Produits Associés</th>
-                <th className="px-6 py-4 text-right">Actions</th>
+                <th className="px-6 py-4 text-right sticky right-0 z-10 bg-zinc-50/50 dark:bg-zinc-900/50 backdrop-blur-sm shadow-[-10px_0_15px_-5px_rgba(0,0,0,0.05)]">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -192,8 +192,8 @@ export default function CategoriesPage() {
                         {cat._count?.products || 0} produits
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <td className="px-6 py-4 text-right sticky right-0 z-10 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-xs transition-colors group-hover:bg-zinc-50/90 dark:group-hover:bg-zinc-800/90 border-l border-zinc-100 dark:border-zinc-800/50">
+                      <div className="flex items-center justify-end gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                         <Link 
                           href={`/categories/${cat.id}`}
                           className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-400 hover:text-blue-600 dark:hover:text-blue-400"

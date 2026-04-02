@@ -373,7 +373,7 @@ export default function AccountingPage() {
                 <th className="px-6 py-3 font-medium text-zinc-500">Catégorie</th>
                 <th className="px-6 py-3 font-medium text-zinc-500">Note</th>
                 <th className="px-6 py-3 font-medium text-zinc-500 text-right">Montant</th>
-                <th className="px-6 py-3 font-medium text-zinc-500 text-center">Action</th>
+                <th className="px-6 py-3 font-medium text-zinc-500 text-center sticky right-0 z-10 bg-zinc-50/50 dark:bg-zinc-950/20 backdrop-blur-sm shadow-[-10px_0_15px_-5px_rgba(0,0,0,0.05)]">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800">
@@ -406,7 +406,7 @@ export default function AccountingPage() {
                     <td className="px-6 py-4 text-right font-mono font-bold text-base">
                       {rec.amount.toLocaleString()} KMF
                     </td>
-                    <td className="px-6 py-4 text-center">
+                    <td className="px-6 py-4 text-center sticky right-0 z-10 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-xs transition-colors group-hover:bg-zinc-50/90 dark:group-hover:bg-zinc-800/90 border-l border-zinc-100 dark:border-zinc-800/50">
                       <button 
                         onClick={() => handleDeleteRecord(rec.id)}
                         className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors"

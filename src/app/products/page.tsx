@@ -262,7 +262,7 @@ export default function ProductsPage() {
                 <th className="px-6 py-4 font-semibold text-zinc-600 dark:text-zinc-400">Prix (Vente)</th>
                 <th className="px-6 py-4 font-semibold text-zinc-600 dark:text-zinc-400">Stock</th>
                 <th className="px-6 py-4 font-semibold text-zinc-600 dark:text-zinc-400">Suivi</th>
-                <th className="px-6 py-4 text-right"></th>
+                <th className="px-6 py-4 text-right sticky right-0 z-10 bg-zinc-50/50 dark:bg-zinc-900/50 backdrop-blur-sm shadow-[-10px_0_15px_-5px_rgba(0,0,0,0.05)] dark:shadow-[-10px_0_15px_-5px_rgba(0,0,0,0.3)]"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -337,7 +337,7 @@ export default function ProductsPage() {
                         {product.isFollowed ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
                       </button>
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-6 py-4 text-right sticky right-0 z-10 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-xs transition-colors group-hover:bg-zinc-50/90 dark:group-hover:bg-zinc-800/90 border-l border-zinc-100 dark:border-zinc-800/50">
                       <div className="flex items-center justify-end gap-2 transition-opacity">
                         <button 
                           onClick={() => editProduct(product)}
