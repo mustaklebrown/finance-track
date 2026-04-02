@@ -603,8 +603,16 @@ export default function SalesPage() {
               <div className="grid grid-cols-4 gap-2">
                 <button 
                   onClick={() => {
-                    const text = encodeURIComponent(`🔖 *FACTURE*\nDate: ${new Date(invoiceData.createdAt || saleDate).toLocaleDateString('fr-FR')}\nTicket: #${invoiceData.id?.slice(0, 8).toUpperCase()}\n\n*Détails:*\n${(invoiceData.entries || invoiceData.items).map((item: any) => `- ${item.quantity}x ${item.product?.name}: ${(item.quantity * (item.unitPrice || item.price)).toLocaleString()} KMF`).join('\n')}\n\n*TOTAL: ${invoiceData.totalAmount.toLocaleString()} KMF*\n\nMerci de votre confiance !`);
-                    window.open(`https://wa.me/?text=${text}`, '_blank');
+                    try {
+                      const idText = (invoiceData.id || '').slice(0, 8).toUpperCase();
+                      const itemsArr = invoiceData.entries || invoiceData.items || [];
+                      const details = itemsArr.map((item: any) => `- ${item.quantity}x ${item.product?.name || 'Produit'}: ${(item.quantity * (item.unitPrice || item.price || 0)).toLocaleString()} KMF`).join('\n');
+                      const dateText = new Date(invoiceData.createdAt || saleDate).toLocaleDateString('fr-FR');
+                      const totalFormatted = (invoiceData.totalAmount || 0).toLocaleString();
+                      
+                      const text = encodeURIComponent(`🔖 *FACTURE*\nDate: ${dateText}\nTicket: #${idText}\n\n*Détails:*\n${details}\n\n*TOTAL: ${totalFormatted} KMF*\n\nMerci de votre confiance !`);
+                      window.open(`https://wa.me/?text=${text}`, '_blank');
+                    } catch (e) { console.error('WA err', e); }
                   }}
                   className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-zinc-50 hover:bg-emerald-50 text-zinc-500 hover:text-emerald-600 transition-colors"
                 >
@@ -613,8 +621,12 @@ export default function SalesPage() {
                 </button>
                 <button 
                   onClick={() => {
-                    const text = encodeURIComponent(`🔖 *FACTURE*\nTicket: #${invoiceData.id?.slice(0, 8).toUpperCase()}\nTotal: ${invoiceData.totalAmount.toLocaleString()} KMF`);
-                    window.open(`https://t.me/share/url?url=${window.location.origin}&text=${text}`, '_blank');
+                    try {
+                      const idText = (invoiceData.id || '').slice(0, 8).toUpperCase();
+                      const totalFormatted = (invoiceData.totalAmount || 0).toLocaleString();
+                      const text = encodeURIComponent(`🔖 *FACTURE*\nTicket: #${idText}\nTotal: ${totalFormatted} KMF`);
+                      window.open(`https://t.me/share/url?url=${window.location.origin}&text=${text}`, '_blank');
+                    } catch (e) { console.error('TG err', e); }
                   }}
                   className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-zinc-50 hover:bg-blue-50 text-zinc-500 hover:text-blue-500 transition-colors"
                 >
@@ -624,40 +636,51 @@ export default function SalesPage() {
                 <button 
                   onClick={async () => {
                     try {
-                      // Dynamically import to avoid edge runtime issues
-                      const html2pdf = (await import('html2pdf.js')).default;
-                      const element = document.getElementById('invoice-content');
-                      if (!element) return;
-                      
                       const btn = document.getElementById('pdf-btn-icon');
                       if (btn) btn.classList.add('animate-pulse');
 
+                      // Clean import format
+                      const mod = await import('html2pdf.js');
+                      const html2pdf = mod.default ? mod.default : mod;
+                      
+                      const element = document.getElementById('invoice-content');
+                      if (!element) return;
+                      
+                      const idText = (invoiceData.id || '').slice(0, 8).toUpperCase();
                       const opt = {
                         margin:       5,
-                        filename:     `Facture_${invoiceData.id?.slice(0, 8).toUpperCase()}.pdf`,
+                        filename:     `Facture_${idText}.pdf`,
                         image:        { type: 'jpeg', quality: 0.98 },
                         html2canvas:  { scale: 2, useCORS: true },
                         jsPDF:        { unit: 'mm', format: 'a5', orientation: 'portrait' }
                       };
                       
-                      const pdfBlob = await html2pdf().set(opt).from(element).outputPdf('blob');
-                      const file = new File([pdfBlob], opt.filename, { type: 'application/pdf' });
-                      
-                      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                        await navigator.share({
-                          title: opt.filename,
-                          text: 'Voici votre facture en format PDF 🧾.',
-                          files: [file],
-                        });
-                      } else {
-                        // Fallback: download locally
-                        html2pdf().set(opt).from(element).save();
-                      }
+                      // Using callback style to ensure UI responds immediately and bypasses gesture timeout
+                      html2pdf().set(opt).from(element).outputPdf('blob').then((pdfBlob: Blob) => {
+                        const file = new File([pdfBlob], opt.filename, { type: 'application/pdf' });
+                        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                          navigator.share({
+                            title: opt.filename,
+                            text: 'Voici votre facture en format PDF 🧾.',
+                            files: [file],
+                          }).catch((err) => {
+                             console.error('Share rejected', err);
+                             // Fallback to direct download
+                             html2pdf().set(opt).from(element).save();
+                          });
+                        } else {
+                          // Fallback: download locally
+                          html2pdf().set(opt).from(element).save();
+                        }
+                      });
                     } catch (error) {
                       console.error('Failed to generate PDF', error);
+                      alert('Erreur lors de la génération PDF. Veuillez réessayer.');
                     } finally {
-                      const btn = document.getElementById('pdf-btn-icon');
-                      if (btn) btn.classList.remove('animate-pulse');
+                      setTimeout(() => {
+                        const btn = document.getElementById('pdf-btn-icon');
+                        if (btn) btn.classList.remove('animate-pulse');
+                      }, 2000);
                     }
                   }}
                   className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-zinc-50 hover:bg-rose-50 text-zinc-500 hover:text-rose-600 transition-colors"
@@ -667,15 +690,18 @@ export default function SalesPage() {
                 </button>
                 <button 
                   onClick={() => {
-                    if (navigator.share) {
-                      navigator.share({
-                        title: `Facture #${invoiceData.id?.slice(0, 8).toUpperCase()}`,
-                        text: `Total: ${invoiceData.totalAmount.toLocaleString()} KMF`,
-                        url: window.location.href
-                      }).catch(console.error);
-                    } else {
-                      alert('Le partage natif n\'est pas supporté sur ce navigateur.');
-                    }
+                    try {
+                      const idText = (invoiceData.id || '').slice(0, 8).toUpperCase();
+                      if (navigator.share) {
+                        navigator.share({
+                          title: `Facture #${idText}`,
+                          text: `Total: ${(invoiceData.totalAmount || 0).toLocaleString()} KMF`,
+                          url: window.location.href
+                        }).catch(console.error);
+                      } else {
+                        alert('Le partage natif n\'est pas supporté sur ce navigateur.');
+                      }
+                    } catch (e) { console.error('Share err', e); }
                   }}
                   className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-zinc-50 hover:bg-zinc-200 text-zinc-500 hover:text-zinc-900 transition-colors"
                 >
