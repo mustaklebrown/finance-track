@@ -40,20 +40,15 @@ export function hasPermission(userRole: Role, minRole: Role) {
 
 /**
  * Ensures the request is sandboxed to the correct store.
- * - STAFF/MANAGER: Always locked to their session.user.storeId.
- * - OWNER: Can optionally view other stores by providing a storeId query param.
+ * - All roles (OWNER, MANAGER, STAFF) are securely locked to their assigned store.
  */
 export async function getAuthorizedStoreId(req?: Request) {
   const session = await getSession();
   if (!session) throw new Error("Unauthorized");
   
-  const { role, storeId: userStoreId } = session.user as any;
+  const { storeId: userStoreId } = session.user as any;
   
-  if (role === "OWNER" && req) {
-    const url = new URL(req.url);
-    const queryStoreId = url.searchParams.get("storeId");
-    if (queryStoreId) return queryStoreId;
-  }
+  if (!userStoreId) throw new Error("No store assigned to this user");
   
   return userStoreId;
 }

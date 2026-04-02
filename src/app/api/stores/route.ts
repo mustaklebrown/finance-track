@@ -12,16 +12,16 @@ export async function GET() {
 
     const { role, storeId } = session.user as any;
 
-    let stores = [];
-    if (role === 'OWNER') {
-      stores = await prisma.store.findMany();
-    } else {
-      stores = await prisma.store.findMany({
-        where: { id: storeId }
-      });
+    const store = await prisma.store.findUnique({
+      where: { id: storeId }
+    });
+
+    if (!store) {
+      return NextResponse.json({ error: 'Store not found' }, { status: 404 });
     }
 
-    return NextResponse.json(stores);
+    // Always return as array for frontend compatibility (since frontend handles array or object)
+    return NextResponse.json([store]);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
