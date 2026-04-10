@@ -7,6 +7,7 @@ const SaleSchema = z.object({
   totalAmount: z.number().min(0),
   amountGiven: z.number().min(0).optional(),
   changeReturned: z.number().min(0).optional(),
+  paymentMethod: z.string().optional(),
   date: z.string().optional(),
   items: z.array(z.object({
     productId: z.string(),
@@ -26,6 +27,7 @@ export async function POST(req: Request) {
     const validated = SaleSchema.parse(body);
 
     const saleDate = validated.date ? new Date(validated.date) : new Date();
+    const method = validated.paymentMethod || 'CASH';
 
     const sale = await prisma.$transaction(async (tx) => {
       // Create the sale
@@ -34,6 +36,7 @@ export async function POST(req: Request) {
           totalAmount: validated.totalAmount,
           amountGiven: validated.amountGiven,
           changeReturned: validated.changeReturned,
+          paymentMethod: method,
           createdAt: saleDate,
           storeId: store.id,
           items: {
@@ -47,6 +50,18 @@ export async function POST(req: Request) {
           }
         },
         include: { items: { include: { product: true } } }
+      });
+
+      // Synchronize with FinancialRecord (Asset / Treasury increase)
+      await tx.financialRecord.create({
+        data: {
+          type: 'ASSET',
+          category: method, // 'CASH', 'BANK', 'MOBILE_MONEY'
+          amount: validated.totalAmount,
+          date: saleDate,
+          notes: `Vente #${s.id.slice(0, 8)}`,
+          storeId: store.id
+        }
       });
 
       // Deduct stock and record movements

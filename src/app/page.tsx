@@ -8,7 +8,6 @@ import {
   DollarSign, 
   Calendar,
   LayoutDashboard,
-  Filter,
   Package,
   Loader2
 } from 'lucide-react';
@@ -23,8 +22,7 @@ import {
   ResponsiveContainer,
   PieChart,
   Pie,
-  Cell,
-  Legend
+  Cell
 } from 'recharts';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { cn } from '@/lib/utils';
@@ -38,17 +36,24 @@ const formatYAxis = (value: number) => {
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div className="rounded-xl border border-zinc-200 bg-white/95 p-4 shadow-xl backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/95">
-        <p className="mb-3 font-semibold text-zinc-900 dark:text-zinc-100 border-b border-zinc-100 dark:border-zinc-800 pb-2">{label}</p>
-        <div className="space-y-2">
+      <div className="overflow-hidden rounded-2xl border border-zinc-200/50 bg-white/80 p-0 shadow-2xl backdrop-blur-xl dark:border-zinc-800/50 dark:bg-zinc-900/80">
+        <div className="border-b border-zinc-100 bg-zinc-50/50 px-4 py-2 dark:border-zinc-800 dark:bg-zinc-800/50">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">{label}</p>
+        </div>
+        <div className="space-y-1 p-3">
           {payload.map((entry: any, index: number) => (
-            <div key={index} className="flex items-center justify-between gap-6 text-sm">
-              <div className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: entry.color }} />
-                <span className="text-zinc-500 dark:text-zinc-400 capitalize">{entry.name}</span>
+            <div key={index} className="flex items-center justify-between gap-8 rounded-lg px-2 py-1.5 transition-colors hover:bg-zinc-50 dark:hover:bg-white/5">
+              <div className="flex items-center gap-2.5">
+                <div 
+                  className="h-2 w-2 rounded-full shadow-[0_0_8px_rgba(0,0,0,0.1)]" 
+                  style={{ backgroundColor: entry.color || entry.payload.fill || entry.fill }} 
+                />
+                <span className="text-xs font-semibold text-zinc-600 dark:text-zinc-300 capitalize">
+                  {entry.name}
+                </span>
               </div>
-              <span className="font-bold text-zinc-900 dark:text-zinc-100">
-                {entry.value.toLocaleString()} KMF
+              <span className="text-xs font-black text-zinc-900 dark:text-zinc-50">
+                {entry.value.toLocaleString()} <span className="text-[10px] font-medium text-zinc-400">KMF</span>
               </span>
             </div>
           ))}
@@ -67,15 +72,12 @@ export default function Dashboard() {
   const [store, setStore] = useState<any>(null);
   const [availableStores, setAvailableStores] = useState<any[]>([]);
   
-  // Nouveaux states pour les KPIs dynamiques
   const [currentMonthData, setCurrentMonthData] = useState<any>(null);
   const [prevMonthData, setPrevMonthData] = useState<any>(null);
   
-  // New detailed states
   const [performanceData, setPerformanceData] = useState<any>(null);
   const [detailedCategories, setDetailedCategories] = useState<any[]>([]);
 
-  // Time filter state
   const [period, setPeriod] = useState<string>('THIS_MONTH');
 
   const fetchDashboardData = async (storeId: string, customPeriod?: string) => {
@@ -125,7 +127,7 @@ export default function Dashboard() {
       } else if (activePeriod === 'ALL_TIME') {
         firstDayThisPeriod = new Date(2000, 0, 1).toISOString();
         lastDayThisPeriod = new Date(now.getFullYear(), 11, 31, 23, 59, 59).toISOString();
-        firstDayLastPeriod = firstDayThisPeriod; // no trend comparison
+        firstDayLastPeriod = firstDayThisPeriod;
         lastDayLastPeriod = lastDayThisPeriod;
       }
 
@@ -136,32 +138,28 @@ export default function Dashboard() {
 
       const [kpiThis, kpiLast] = await Promise.all([kpiResThis.json(), kpiResLast.json()]);
       
-      setData(kpiThis); // fallback for generic data
+      setData(kpiThis);
       setCurrentMonthData(kpiThis);
-      // If ALL_TIME, avoid fake trends
       setPrevMonthData(activePeriod === 'ALL_TIME' ? kpiThis : kpiLast);
 
-      // 3. Fetch Revenue vs Expenses (Keep year-driven or period driven if API supports)
       const revRes = await fetch(`/api/dashboard/charts/revenue-expenses?storeId=${storeId}&year=${now.getFullYear()}`);
       const revData = await revRes.json();
       setRevenueData(revData.map((d: any) => ({
         month: d.month,
-        Revenus: d.revenue,
-        Dépenses: d.expenses,
-        'Bénéfice Net': d.revenue - d.expenses
+        Revenus: d.revenu || 0,
+        Dépenses: d.depense || 0,
+        'Bénéfice Net': (d.revenu || 0) - (d.depense || 0)
       })));
 
-      // 4. Fetch Category Sales
       const catRes = await fetch(`/api/dashboard/charts/sales-category?storeId=${storeId}&startDate=${firstDayThisPeriod}&endDate=${lastDayThisPeriod}`);
       const catData = await catRes.json();
-      const colors = ['#0ea5e9', '#8b5cf6', '#f59e0b', '#10b981', '#f43f5e'];
+      const colors = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#f43f5e', '#06b6d4'];
       setCategoryData(catData.map((d: any, i: number) => ({
-        name: d.category,
-        value: d.revenue,
+        name: d.name || 'Inconnu',
+        value: d.value || 0,
         fill: colors[i % colors.length]
       })));
 
-      // 5. Fetch Store Performance & Detailed Categories
       const perfRes = await fetch(`/api/dashboard/performance?storeId=${storeId}&startDate=${firstDayThisPeriod}&endDate=${lastDayThisPeriod}`);
       const perfJson = await perfRes.json();
       setPerformanceData(perfJson.performance);
@@ -178,30 +176,24 @@ export default function Dashboard() {
     const initDashboard = async () => {
       try {
         setLoading(true);
-        // 1. Get default store
         const storeRes = await fetch('/api/stores');
         if (!storeRes.ok) throw new Error('Could not find store');
         const storesData = await storeRes.json();
-        
         const storesArray = Array.isArray(storesData) ? storesData : [storesData];
         setAvailableStores(storesArray);
-        
         const activeStore = storesArray[0];
         setStore(activeStore);
-
         const storeId = activeStore?.id;
         if (!storeId) {
             setLoading(false);
             return;
         }
-        
         await fetchDashboardData(storeId);
       } catch (error) {
         console.error('Failed to init dashboard:', error);
         setLoading(false);
       }
     };
-
     initDashboard();
   }, []);
 
@@ -314,7 +306,7 @@ export default function Dashboard() {
              currentMonthData && prevMonthData && prevMonthData.cac.cac > 0
                ? { 
                    value: Math.abs(((currentMonthData.cac.cac - prevMonthData.cac.cac) / prevMonthData.cac.cac) * 100), 
-                   isPositive: currentMonthData.cac.cac <= prevMonthData.cac.cac // For CAC, lower is better (positive trend usually implies improvement, so green if lower)
+                   isPositive: currentMonthData.cac.cac <= prevMonthData.cac.cac
                  }
                : { value: 0, isPositive: true }
           }
@@ -339,126 +331,168 @@ export default function Dashboard() {
       {/* Charts Section */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Revenue Area Chart */}
-        <div className="lg:col-span-2 rounded-2xl border border-zinc-100 bg-white p-6 shadow-sm dark:bg-zinc-900 dark:border-zinc-800">
-          <div className="mb-6 flex items-center justify-between">
-            <h3 className="text-lg font-semibold tracking-tight">Performance Financière</h3>
-            <div className="flex flex-wrap items-center gap-4 text-xs font-medium">
-              <div className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-blue-500" /> Revenus
+        <div className="lg:col-span-2 relative overflow-hidden rounded-2xl border border-zinc-200/50 bg-white/70 p-6 shadow-xl shadow-zinc-200/20 backdrop-blur-xl dark:border-zinc-800/50 dark:bg-zinc-900/70 dark:shadow-none">
+          <div className="absolute -right-24 -top-24 h-64 w-64 rounded-full bg-blue-500/5 blur-3xl" />
+          <div className="absolute -left-24 -bottom-24 h-64 w-64 rounded-full bg-emerald-500/5 blur-3xl" />
+          
+          <div className="relative mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">Performance Financière</h3>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">Croissance des revenus et évolution des bénéfices</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3 bg-zinc-50/50 dark:bg-zinc-800/50 p-1.5 rounded-xl border border-zinc-100 dark:border-zinc-800">
+              <div className="flex items-center gap-1.5 px-2 py-1">
+                <span className="h-2 w-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
+                <span className="text-[11px] font-bold text-zinc-600 dark:text-zinc-300">Revenus</span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-emerald-500" /> Bénéfice
+              <div className="flex items-center gap-1.5 px-2 py-1">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                <span className="text-[11px] font-bold text-zinc-600 dark:text-zinc-300">Bénéfice</span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-red-400 dark:bg-red-500" /> Dépenses
+              <div className="flex items-center gap-1.5 px-2 py-1">
+                <span className="h-2 w-2 rounded-full bg-rose-400 dark:bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]" />
+                <span className="text-[11px] font-bold text-zinc-600 dark:text-zinc-300">Dépenses</span>
               </div>
             </div>
           </div>
-          <div className="h-[350px] w-full">
+          
+          <div className="h-[350px] w-full relative">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={revenueData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-              <defs>
-                <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2}/>
-                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                </linearGradient>
-                <linearGradient id="colorBenefice" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
-                  <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" strokeOpacity={0.5} />
-              <XAxis 
-                dataKey="month" 
-                axisLine={false} 
-                tickLine={false} 
-                tick={{fill: '#64748b', fontSize: 12, fontWeight: 500}} 
-                dy={10}
-              />
-              <YAxis 
-                axisLine={false} 
-                tickLine={false} 
-                tick={{fill: '#64748b', fontSize: 12, fontWeight: 500}}
-                tickFormatter={formatYAxis}
-                dx={-10}
-              />
-              <Tooltip content={<CustomTooltip />} />
-              <Area 
-                type="monotone" 
-                dataKey="Revenus" 
-                stroke="#3b82f6" 
-                strokeWidth={3}
-                fillOpacity={1} 
-                fill="url(#colorRevenue)" 
-                animationDuration={1500}
-              />
-              <Area 
-                type="monotone" 
-                dataKey="Bénéfice Net" 
-                stroke="#10b981" 
-                strokeWidth={3}
-                fillOpacity={1} 
-                fill="url(#colorBenefice)" 
-                animationDuration={1500}
-              />
-              <Area 
-                type="monotone" 
-                dataKey="Dépenses" 
-                stroke="#f87171" 
-                strokeWidth={2}
-                strokeDasharray="4 4"
-                fill="none" 
-                animationDuration={1500}
-              />
+                <defs>
+                  <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2}/>
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                  </linearGradient>
+                  <linearGradient id="colorBenefice" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" strokeOpacity={0.4} />
+                <XAxis 
+                  dataKey="month" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{fill: '#94a3b8', fontSize: 11, fontWeight: 600}} 
+                  dy={15}
+                />
+                <YAxis 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{fill: '#94a3b8', fontSize: 11, fontWeight: 600}}
+                  tickFormatter={formatYAxis}
+                  dx={-10}
+                />
+                <Tooltip 
+                  content={<CustomTooltip />} 
+                  cursor={{ stroke: '#94a3b8', strokeWidth: 1, strokeDasharray: '4 4' }}
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="Revenus" 
+                  stroke="#3b82f6" 
+                  strokeWidth={3}
+                  fillOpacity={1} 
+                  fill="url(#colorRevenue)" 
+                  animationDuration={2000}
+                  activeDot={{ r: 6, strokeWidth: 0, fill: '#3b82f6', className: "shadow-lg shadow-blue-500/50" }}
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="Bénéfice Net" 
+                  stroke="#10b981" 
+                  strokeWidth={3}
+                  fillOpacity={1} 
+                  fill="url(#colorBenefice)" 
+                  animationDuration={2000}
+                  activeDot={{ r: 6, strokeWidth: 0, fill: '#10b981', className: "shadow-lg shadow-emerald-500/50" }}
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="Dépenses" 
+                  stroke="#fb7185" 
+                  strokeWidth={2}
+                  strokeDasharray="5 5"
+                  fill="none" 
+                  animationDuration={2000}
+                />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         {/* Categories Pie Chart */}
-        <div className="rounded-2xl border border-zinc-100 bg-white p-6 shadow-sm dark:bg-zinc-900 dark:border-zinc-800">
-          <h3 className="mb-6 text-lg font-semibold tracking-tight">Répartition par Catégorie</h3>
-          <div className="h-[300px] w-full flex items-center justify-center">
+        <div className="group rounded-2xl border border-zinc-200/50 bg-white/70 p-6 shadow-xl shadow-zinc-200/20 backdrop-blur-xl dark:border-zinc-800/50 dark:bg-zinc-900/70 dark:shadow-none">
+          <div className="mb-8">
+            <h3 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">Répartition Ventes</h3>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">Source des revenus par catégorie</p>
+          </div>
+          
+          <div className="relative h-[280px] w-full flex items-center justify-center">
             {categoryData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={categoryData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={8}
-                    dataKey="value"
-                  >
-                    {categoryData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.fill} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} 
-                  />
-                  <Legend layout="horizontal" verticalAlign="bottom" align="center" />
-                </PieChart>
-              </ResponsiveContainer>
+              <>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={categoryData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={75}
+                      outerRadius={95}
+                      paddingAngle={5}
+                      dataKey="value"
+                      animationBegin={0}
+                      animationDuration={1500}
+                    >
+                      {categoryData.map((entry, index) => (
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={entry.fill} 
+                          stroke="transparent"
+                          className="outline-none transition-all duration-300 hover:opacity-80"
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip content={<CustomTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <span className="text-[10px] uppercase tracking-widest font-bold text-zinc-400">Total</span>
+                  <span className="text-2xl font-black text-zinc-900 dark:text-zinc-50">
+                    {categoryData.reduce((acc, curr) => acc + curr.value, 0).toLocaleString()}
+                  </span>
+                  <span className="text-[10px] font-bold text-zinc-500">KMF</span>
+                </div>
+              </>
             ) : (
-              <div className="text-zinc-400 text-sm">Aucune donnée disponible</div>
+              <div className="text-zinc-400 text-sm flex flex-col items-center gap-2">
+                <div className="h-16 w-16 rounded-full border-4 border-zinc-100 border-t-zinc-200 animate-spin" />
+                <span>Chargement...</span>
+              </div>
             )}
           </div>
-          <div className="mt-4 space-y-3">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-zinc-500 font-medium">Performance Brute</span>
+
+          <div className="mt-8 space-y-4">
+            <div className="flex items-center justify-between rounded-xl bg-zinc-50 p-3 dark:bg-zinc-800/30">
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-emerald-500" />
+                <span className="text-sm font-semibold text-zinc-600 dark:text-zinc-400">Performance Brute</span>
+              </div>
               <span className={cn(
-                "rounded-full px-2 py-0.5 text-xs font-bold",
-                (data?.margins.grossMarginPercentage || 0) > 50 ? "bg-emerald-50 text-emerald-600" : "bg-blue-50 text-blue-600"
+                "rounded-lg px-2 py-0.5 text-xs font-black",
+                (data?.margins.grossMarginPercentage || 0) > 50 ? "text-emerald-600" : "text-blue-600"
               )}>
                 {data?.margins.grossMarginPercentage.toFixed(1) || 0}%
               </span>
             </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-zinc-500 font-medium">Bénéfice Net</span>
-              <span className="font-bold text-zinc-900 dark:text-zinc-50">
-                {data?.margins.netMargin.toLocaleString() || 0} KMF
+            <div className="flex items-center justify-between rounded-xl bg-zinc-50 p-3 dark:bg-zinc-800/30">
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-blue-500" />
+                <span className="text-sm font-semibold text-zinc-600 dark:text-zinc-400">Bénéfice Net</span>
+              </div>
+              <span className="text-sm font-black text-zinc-900 dark:text-zinc-50">
+                {data?.margins.netMargin.toLocaleString() || 0} <span className="text-[10px] font-medium text-zinc-400">KMF</span>
               </span>
             </div>
           </div>
@@ -468,71 +502,85 @@ export default function Dashboard() {
       {/* Store Performance & Category Analysis Details */}
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Top Products */}
-        <div className="rounded-2xl border border-zinc-100 bg-white p-6 shadow-sm dark:bg-zinc-900 dark:border-zinc-800">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold tracking-tight">Ventes par Produit (Top 5)</h3>
-            <div className="rounded-lg bg-zinc-50 dark:bg-zinc-800 px-3 py-1 text-xs font-bold text-zinc-500">Ce mois</div>
+        <div className="rounded-2xl border border-zinc-200/50 bg-white/70 p-6 shadow-xl shadow-zinc-200/20 backdrop-blur-xl dark:border-zinc-800/50 dark:bg-zinc-900/70 dark:shadow-none">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h3 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">Ventes par Produit</h3>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">Les 5 meilleures performances du mois</p>
+            </div>
+            <div className="rounded-xl bg-blue-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 border border-blue-500/20">Ce mois</div>
           </div>
-          <div className="space-y-4">
+          <div className="space-y-3">
             {performanceData?.topProducts?.length > 0 ? (
               performanceData.topProducts.map((p: any, i: number) => (
-                <div key={i} className="flex items-center justify-between group">
-                  <div className="flex items-center gap-3">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-50 dark:bg-zinc-800 text-xs font-bold text-zinc-400 group-hover:bg-blue-50 group-hover:text-blue-500 transition-colors">
+                <div key={i} className="group flex items-center justify-between rounded-xl border border-transparent p-3 transition-all hover:border-zinc-100 hover:bg-zinc-50/50 dark:hover:border-zinc-800 dark:hover:bg-white/5">
+                  <div className="flex items-center gap-4">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-100 dark:bg-zinc-800 text-sm font-black text-zinc-400 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">
                       {i + 1}
                     </span>
                     <div>
-                      <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{p.name}</p>
-                      <p className="text-xs text-zinc-500">{p.quantity} unités vendues</p>
+                      <p className="font-bold text-zinc-900 dark:text-zinc-100">{p.name}</p>
+                      <p className="text-[11px] font-medium text-zinc-500">{p.quantity} unités vendues</p>
                     </div>
                   </div>
-                  <p className="text-sm font-bold text-emerald-600">+{p.revenue.toLocaleString()} KMF</p>
+                  <div className="text-right">
+                    <p className="font-black text-emerald-600">+{p.revenue.toLocaleString()} KMF</p>
+                    <div className="mt-1 h-1 w-24 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+                      <div 
+                        className="h-full bg-emerald-500 transition-all duration-1000" 
+                        style={{ width: `${Math.min(100, (p.revenue / (performanceData.topProducts[0]?.revenue || 1)) * 100)}%` }} 
+                      />
+                    </div>
+                  </div>
                 </div>
               ))
             ) : (
-                <p className="py-8 text-center text-sm text-zinc-400">Aucune vente enregistrée ce mois</p>
+                <div className="py-12 text-center text-sm text-zinc-400 font-medium">Aucune vente enregistrée ce mois</div>
             )}
           </div>
-          <div className="mt-6 pt-6 border-t border-zinc-50 dark:border-zinc-800 flex items-center justify-between text-sm">
-             <span className="text-zinc-500 font-medium italic">Panier Moyen:</span>
-             <span className="font-bold text-lg text-blue-600">{performanceData?.averageTicket.toLocaleString() || 0} KMF</span>
+          <div className="mt-8 pt-6 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+             <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest italic">Panier Moyen:</span>
+             <span className="font-black text-2xl bg-linear-to-r from-blue-600 to-indigo-500 bg-clip-text text-transparent">{performanceData?.averageTicket.toLocaleString() || 0} <span className="text-xs text-zinc-400">KMF</span></span>
           </div>
         </div>
 
         {/* Categories Analysis Table */}
-        <div className="rounded-2xl border border-zinc-100 bg-white p-6 shadow-sm dark:bg-zinc-900 dark:border-zinc-800">
-          <h3 className="mb-6 text-lg font-semibold tracking-tight">Rentabilité des Catégorie</h3>
+        <div className="rounded-2xl border border-zinc-200/50 bg-white/70 p-6 shadow-xl shadow-zinc-200/20 backdrop-blur-xl dark:border-zinc-800/50 dark:bg-zinc-900/70 dark:shadow-none">
+          <div className="mb-8">
+            <h3 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">Rentabilité Catégories</h3>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">Analyse détaillée des marges sectorielles</p>
+          </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
+            <table className="w-full text-left">
               <thead>
-                <tr className="border-b border-zinc-50 dark:border-zinc-800">
-                  <th className="pb-3 font-semibold text-zinc-500">Catégorie</th>
-                  <th className="pb-3 font-semibold text-zinc-500 text-right">Volume</th>
-                  <th className="pb-3 font-semibold text-zinc-500 text-right">Marge %</th>
-                  <th className="pb-3 font-semibold text-zinc-500 text-right">Bénéfice</th>
+                <tr className="border-b border-zinc-100 dark:border-zinc-800">
+                  <th className="pb-4 text-[10px] font-black uppercase tracking-wider text-zinc-400">Catégorie</th>
+                  <th className="pb-4 text-[10px] font-black uppercase tracking-wider text-zinc-400 text-right">Volume</th>
+                  <th className="pb-4 text-[10px] font-black uppercase tracking-wider text-zinc-400 text-right">Marge %</th>
+                  <th className="pb-4 text-[10px] font-black uppercase tracking-wider text-zinc-400 text-right">Bénéfice</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800">
                 {detailedCategories.length > 0 ? (
                   detailedCategories.map((cat: any) => (
-                    <tr key={cat.id} className="group hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
-                      <td className="py-4 font-semibold text-zinc-900 dark:text-zinc-100">{cat.name}</td>
-                      <td className="py-4 text-right text-zinc-500">{cat.quantity} units</td>
+                    <tr key={cat.id} className="group transition-colors hover:bg-zinc-50/50 dark:hover:bg-white/5">
+                      <td className="py-4 font-bold text-zinc-900 dark:text-zinc-100">{cat.name}</td>
+                      <td className="py-4 text-right text-xs font-semibold text-zinc-500">{cat.quantity} unités</td>
                       <td className="py-4 text-right">
                         <span className={cn(
-                          "px-2 py-0.5 rounded-full text-[10px] font-bold",
-                          cat.marginPercentage > 30 ? "bg-emerald-50 text-emerald-600" : "bg-blue-50 text-blue-600"
+                          "rounded-lg px-2 py-1 text-[10px] font-black tracking-tight",
+                          cat.marginPercentage > 30 ? "bg-emerald-500/10 text-emerald-600 shadow-sm shadow-emerald-500/10" : "bg-blue-500/10 text-blue-600 shadow-sm shadow-blue-500/10"
                         )}>
                           {cat.marginPercentage.toFixed(1)}%
                         </span>
                       </td>
-                      <td className="py-4 text-right font-mono font-bold text-zinc-700 dark:text-zinc-300">
+                      <td className="py-4 text-right font-mono font-black text-zinc-900 dark:text-zinc-50 text-sm">
                         {cat.margin.toLocaleString()}
                       </td>
                     </tr>
                   ))
                 ) : (
-                  <tr><td colSpan={4} className="py-8 text-center text-zinc-400">Aucune catégorie analysée</td></tr>
+                  <tr><td colSpan={4} className="py-12 text-center text-zinc-400 font-medium">Aucune catégorie analysée</td></tr>
                 )}
               </tbody>
             </table>

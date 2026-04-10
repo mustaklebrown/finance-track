@@ -203,6 +203,7 @@ model Sale {
   totalAmount Float
   amountGiven Float?   // Montant donné par le client
   changeReturned Float? // Montant rendu au client
+  paymentMethod String @default("CASH") // "CASH", "BANK", "MOBILE_MONEY"
   createdAt   DateTime @default(now()) // Can serve as transaction date
   updatedAt   DateTime @updatedAt
 

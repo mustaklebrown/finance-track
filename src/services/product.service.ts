@@ -34,11 +34,29 @@ export class ProductService {
   }
 
   static async create(storeId: string, data: CreateProductData) {
-    return await prisma.product.create({
-      data: {
-        ...data,
-        storeId,
-      },
+    return await prisma.$transaction(async (tx) => {
+      const product = await tx.product.create({
+        data: {
+          ...data,
+          storeId,
+        },
+      });
+
+      // If initial stock is greater than 0, create an automatic expense for the inventory purchase
+      if (data.stockLevel && data.stockLevel > 0) {
+        const inventoryCost = data.purchasePrice * data.stockLevel;
+        await tx.expense.create({
+          data: {
+            name: `Achat stock initial: ${data.name}`,
+            amount: inventoryCost,
+            date: new Date(),
+            category: 'Achat Stock',
+            storeId,
+          }
+        });
+      }
+
+      return product;
     });
   }
 
@@ -52,9 +70,10 @@ export class ProductService {
         data,
       });
 
-      // If stockLevel changed, log it (unless it was already handled by a Sale/Restock specific API)
+      // Handle stock and expenses
       if (data.stockLevel !== undefined && data.stockLevel !== oldProduct.stockLevel) {
         const diff = data.stockLevel - oldProduct.stockLevel;
+        
         await tx.stockMovement.create({
           data: {
             productId: id,
@@ -63,6 +82,20 @@ export class ProductService {
             reason: 'Mise à jour manuelle'
           }
         });
+
+        // If stock is INCREASED, money must have been spent to buy it (Cash flow decrease)
+        if (diff > 0) {
+          const costToBuy = (data.purchasePrice ?? oldProduct.purchasePrice) * diff;
+          await tx.expense.create({
+            data: {
+              name: `Restockage: ${updatedProduct.name} (+${diff} unités)`,
+              amount: costToBuy,
+              date: new Date(),
+              category: 'Achat Stock',
+              storeId: oldProduct.storeId,
+            }
+          });
+        }
       }
 
       return updatedProduct;

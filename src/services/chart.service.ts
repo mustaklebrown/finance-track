@@ -31,6 +31,28 @@ export class ChartService {
       select: { date: true, amount: true },
     });
 
+    const campaigns = await prisma.campaign.findMany({
+      where: {
+        storeId,
+        startDate: {
+          gte: new Date(`${year}-01-01T00:00:00Z`),
+          lte: new Date(`${year}-12-31T23:59:59Z`),
+        },
+      },
+      select: { startDate: true, budget: true },
+    });
+
+    const purchases = await prisma.purchase.findMany({
+      where: {
+        storeId,
+        date: {
+          gte: new Date(`${year}-01-01T00:00:00Z`),
+          lte: new Date(`${year}-12-31T23:59:59Z`),
+        },
+      },
+      select: { date: true, amount: true },
+    });
+
     // Initialisation du tableau avec 12 mois
     const monthlyData = Array.from({ length: 12 }, (_, i) => ({
       month: new Date(0, i).toLocaleString('fr-FR', { month: 'short' }), // "janv.", "févr."...
@@ -44,10 +66,22 @@ export class ChartService {
       monthlyData[monthIndex].revenu += sale.totalAmount;
     });
 
-    // Grouper les dépenses
+    // Grouper les dépenses fixes
     expenses.forEach((exp: { date: Date; amount: number }) => {
       const monthIndex = exp.date.getMonth();
       monthlyData[monthIndex].depense += exp.amount;
+    });
+
+    // Grouper les dépenses marketing (campagnes)
+    campaigns.forEach((camp) => {
+      const monthIndex = camp.startDate.getMonth();
+      monthlyData[monthIndex].depense += camp.budget;
+    });
+
+    // Grouper les dépenses des achats (purchases)
+    purchases.forEach((purch) => {
+      const monthIndex = purch.date.getMonth();
+      monthlyData[monthIndex].depense += purch.amount;
     });
 
     return monthlyData; // Prêt pour `<AreaChart data={data}>`

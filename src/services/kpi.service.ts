@@ -40,7 +40,29 @@ export class KPIService {
       },
     });
 
-    const totalExpenses = expenses._sum.amount || 0;
+    // 3. Récupérer les dépenses marketing (budget des campagnes)
+    const campaigns = await prisma.campaign.aggregate({
+      _sum: { budget: true },
+      where: {
+        storeId,
+        startDate: { gte: startDate, lte: endDate },
+      },
+    });
+
+    // 4. Récupérer les achats auprès des fournisseurs
+    const purchases = await prisma.purchase.aggregate({
+      _sum: { amount: true },
+      where: {
+        storeId,
+        date: { gte: startDate, lte: endDate },
+      },
+    });
+
+    const fixedExpenses = expenses._sum.amount || 0;
+    const marketingExpenses = campaigns._sum.budget || 0;
+    const purchaseExpenses = purchases._sum.amount || 0;
+
+    const totalExpenses = fixedExpenses + marketingExpenses + purchaseExpenses;
     const netMargin = grossMargin - totalExpenses;
 
     return {
@@ -48,6 +70,9 @@ export class KPIService {
       totalCogs,
       grossMargin,
       totalExpenses,
+      fixedExpenses,
+      marketingExpenses,
+      purchaseExpenses,
       netMargin,
       grossMarginPercentage: totalRevenue ? (grossMargin / totalRevenue) * 100 : 0,
       netMarginPercentage: totalRevenue ? (netMargin / totalRevenue) * 100 : 0,

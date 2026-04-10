@@ -59,6 +59,7 @@ export default function SalesPage() {
   const [entries, setEntries] = useState<SaleEntry[]>([]);
   const [productSearch, setProductSearch] = useState('');
   const [amountGiven, setAmountGiven] = useState<number | ''>('');
+  const [paymentMethod, setPaymentMethod] = useState('CASH');
   
   // Invoice state
   const [showInvoice, setShowInvoice] = useState(false);
@@ -147,7 +148,7 @@ export default function SalesPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (entries.length === 0) { alert('Ajoutez au moins un produit.'); return; }
-    if (typeof amountGiven !== 'number' || amountGiven < totalAmount) {
+    if (paymentMethod === 'CASH' && (typeof amountGiven !== 'number' || amountGiven < totalAmount)) {
       alert('Le montant donné est inférieur au total à encaisser.');
       return;
     }
@@ -155,8 +156,9 @@ export default function SalesPage() {
     try {
       const payload = {
         totalAmount,
-        amountGiven,
-        changeReturned,
+        amountGiven: typeof amountGiven === 'number' ? amountGiven : undefined,
+        changeReturned: typeof amountGiven === 'number' ? changeReturned : undefined,
+        paymentMethod,
         date: saleDate,
         items: entries.map(e => ({
           productId: e.productId,
@@ -172,12 +174,17 @@ export default function SalesPage() {
         body: JSON.stringify(payload)
       });
       
+      const resData = await res.json();
+      
       if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.full || errData.error || 'Échec de la création');
+        // Handle Zod array errors or string errors
+        const errMsg = Array.isArray(resData.error) 
+          ? resData.error.map((e: any) => `${e.path.join('.')}: ${e.message}`).join(', ')
+          : (resData.error || 'Échec de la création');
+        throw new Error(errMsg);
       }
       
-      const newSale = await res.json();
+      const newSale = resData;
 
       setSuccessMsg(`✅ Vente du ${new Date(saleDate).toLocaleDateString('fr-FR')} enregistrée !`);
       setTimeout(() => setSuccessMsg(''), 5000);
@@ -191,9 +198,9 @@ export default function SalesPage() {
       setAmountGiven('');
       setSaleDate(new Date().toISOString().split('T')[0]);
       fetchSales();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('Une erreur est survenue lors de la soumission.');
+      alert('Erreur: ' + (err.message || 'Une erreur est survenue lors de la soumission.'));
     } finally {
       setSubmitting(false);
     }
@@ -491,15 +498,26 @@ export default function SalesPage() {
                   </div>
                   <div className="space-y-3">
                     <div>
+                      <label className="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Méthode de Paiement</label>
+                      <select
+                        value={paymentMethod}
+                        onChange={e => setPaymentMethod(e.target.value)}
+                        className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500/20 dark:bg-black/50 dark:border-zinc-800 mb-3"
+                      >
+                        <option value="CASH">Espèces (CASH)</option>
+                        <option value="BANK">Carte / Virement (BANK)</option>
+                        <option value="MOBILE_MONEY">Mobile Money</option>
+                      </select>
                       <label className="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Montant Donné (KMF)</label>
                       <input
                         type="number"
-                        min={totalAmount}
+                        min={paymentMethod === 'CASH' ? totalAmount : 0}
                         value={amountGiven}
                         onChange={e => setAmountGiven(e.target.value ? Number(e.target.value) : '')}
                         className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-right font-bold outline-none focus:ring-2 focus:ring-emerald-500/20 dark:bg-black/50 dark:border-zinc-800"
-                        required
-                        placeholder="Ex: 10000"
+                        required={paymentMethod === 'CASH'}
+                        placeholder={paymentMethod === 'CASH' ? "Ex: 10000" : "Optionnel"}
+                        disabled={paymentMethod !== 'CASH'}
                       />
                     </div>
                     {typeof amountGiven === 'number' && amountGiven >= totalAmount && (
@@ -582,14 +600,27 @@ export default function SalesPage() {
                 <span>TOTAL A PAYER</span>
                 <span>{invoiceData.totalAmount.toLocaleString()} KMF</span>
               </div>
-              <div className="flex justify-between text-zinc-600">
-                <span>Espèces données</span>
-                <span>{invoiceData.amountGiven?.toLocaleString() || '0'} KMF</span>
+              
+              <div className="flex justify-between text-zinc-500 text-xs border-t border-zinc-100 pt-2">
+                <span>Mode de Paiement</span>
+                <span className="font-bold border px-1.5 rounded bg-zinc-50">
+                  {invoiceData.paymentMethod === 'BANK' ? 'BANQUE / CARTE' : 
+                   invoiceData.paymentMethod === 'MOBILE_MONEY' ? 'MOBILE MONEY' : 'ESPÈCES'}
+                </span>
               </div>
-              <div className="flex justify-between text-zinc-600">
-                <span>Monnaie rendue</span>
-                <span>{invoiceData.changeReturned?.toLocaleString() || '0'} KMF</span>
-              </div>
+
+              {invoiceData.paymentMethod === 'CASH' && (
+                <>
+                  <div className="flex justify-between text-zinc-600">
+                    <span>Espèces données</span>
+                    <span>{invoiceData.amountGiven?.toLocaleString() || '0'} KMF</span>
+                  </div>
+                  <div className="flex justify-between text-zinc-600">
+                    <span>Monnaie rendue</span>
+                    <span>{invoiceData.changeReturned?.toLocaleString() || '0'} KMF</span>
+                  </div>
+                </>
+              )}
             </div>
             
             <div className="mt-8 text-center text-xs text-zinc-500 border-t border-zinc-200 pt-4">
@@ -609,8 +640,10 @@ export default function SalesPage() {
                       const details = itemsArr.map((item: any) => `- ${item.quantity}x ${item.product?.name || 'Produit'}: ${(item.quantity * (item.unitPrice || item.price || 0)).toLocaleString()} KMF`).join('\n');
                       const dateText = new Date(invoiceData.createdAt || saleDate).toLocaleDateString('fr-FR');
                       const totalFormatted = (invoiceData.totalAmount || 0).toLocaleString();
+                      const payMethod = invoiceData.paymentMethod === 'BANK' ? 'BANQUE' : 
+                                      invoiceData.paymentMethod === 'MOBILE_MONEY' ? 'MOBILE MONEY' : 'ESPÈCES';
                       
-                      const text = encodeURIComponent(`🔖 *FACTURE*\nDate: ${dateText}\nTicket: #${idText}\n\n*Détails:*\n${details}\n\n*TOTAL: ${totalFormatted} KMF*\n\nMerci de votre confiance !`);
+                      const text = encodeURIComponent(`🔖 *FACTURE*\nDate: ${dateText}\nTicket: #${idText}\nMode: ${payMethod}\n\n*Détails:*\n${details}\n\n*TOTAL: ${totalFormatted} KMF*\n\nMerci de votre confiance !`);
                       window.open(`https://wa.me/?text=${text}`, '_blank');
                     } catch (e) { console.error('WA err', e); }
                   }}
@@ -652,7 +685,7 @@ export default function SalesPage() {
                       domToJpeg(element, { 
                         scale: 2, 
                         backgroundColor: '#ffffff',
-                        filter: (node) => !node.hasAttribute?.('data-html2canvas-ignore')
+                        filter: (node) => !(node instanceof Element && node.hasAttribute('data-html2canvas-ignore'))
                       }).then((dataUrl) => {
                         const pdf = new jsPDF({
                           unit: 'mm',
