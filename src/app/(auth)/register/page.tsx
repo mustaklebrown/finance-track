@@ -8,6 +8,7 @@ import { Loader2 } from "lucide-react";
 
 export default function RegisterPage() {
     const [name, setName] = useState("");
+    const [storeName, setStoreName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
@@ -23,8 +24,9 @@ export default function RegisterPage() {
             email,
             password,
             name,
+            storeName,
             callbackURL: "/",
-        });
+        } as any);
 
         if (error) {
             setError(error.message || "Une erreur est survenue lors de l'inscription");
@@ -59,6 +61,17 @@ export default function RegisterPage() {
                                 onChange={(e) => setName(e.target.value)}
                                 className="appearance-none block w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white focus:border-transparent transition-all sm:text-sm text-zinc-900 dark:text-white"
                                 placeholder="Jean Dupont"
+                                required
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 mb-2">Nom de la Boutique</label>
+                            <input
+                                type="text"
+                                value={storeName}
+                                onChange={(e) => setStoreName(e.target.value)}
+                                className="appearance-none block w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white focus:border-transparent transition-all sm:text-sm text-zinc-900 dark:text-white"
+                                placeholder="Mon Entreprise"
                                 required
                             />
                         </div>

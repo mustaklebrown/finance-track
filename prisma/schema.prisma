@@ -39,6 +39,8 @@ model User {
 
   storeId String
   store   Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  
+  storeName String?
 
   sessions Session[]
   accounts Account[]

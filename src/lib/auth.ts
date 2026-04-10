@@ -20,6 +20,10 @@ export const auth = betterAuth({
             storeId: {
                 type: "string",
                 required: false, // Made optional for the signup payload so we can generate it
+            },
+            storeName: {
+                type: "string",
+                required: false,
             }
         }
     },
@@ -27,10 +31,24 @@ export const auth = betterAuth({
         user: {
             create: {
                 before: async (user) => {
+                    const chosenStoreName = typeof user.storeName === 'string' && user.storeName.trim() !== '' 
+                        ? user.storeName 
+                        : `Boutique de ${user.name || 'Nouveau Propriétaire'}`;
+
                     // Create a default store for the new registrant
                     const store = await prisma.store.create({
                         data: {
-                            name: `Boutique de ${user.name || 'Nouveau Propriétaire'}`,
+                            name: chosenStoreName,
+                            categories: {
+                                create: [
+                                    { name: "Alimentation" },
+                                    { name: "Boissons" },
+                                    { name: "Vêtements" },
+                                    { name: "Cosmétiques" },
+                                    { name: "Électronique" },
+                                    { name: "Services divers" }
+                                ]
+                            }
                         }
                     });
                     
@@ -39,6 +57,7 @@ export const auth = betterAuth({
                             ...user,
                             storeId: store.id,   // Assign the newly created store to this user
                             role: 'OWNER',       // The creator of the account becomes the OWNER
+                            storeName: null,     // Wipe it after use so user can use it later if needed elsewhere
                         }
                     };
                 }
