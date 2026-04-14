@@ -35,6 +35,6 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico, icon.png (favicon file)
      */
-    '/((?!api/auth|login|register|_next/static|_next/image|favicon.ico|icon.png).*)',
+    '/((?!api/auth|login|register|forgot-password|reset-password|_next/static|_next/image|favicon.ico|icon.png).*)',
   ],
 };

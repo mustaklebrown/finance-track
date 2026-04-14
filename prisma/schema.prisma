@@ -6,25 +6,21 @@ datasource db {
   provider = "postgresql"
 }
 
-// -----------------------------------------------------------------------------
-// Multi-tenancy & Auth
-// -----------------------------------------------------------------------------
 model Store {
-  id        String   @id @default(uuid())
-  name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  users      User[]
-  products   Product[]
-  categories Category[]
-  customers  Customer[]
-  sales      Sale[]
-  campaigns  Campaign[]
-  expenses   Expense[]
-  suppliers  Supplier[]
-  purchases  Purchase[]
+  id               String            @id @default(uuid())
+  name             String
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  campaigns        Campaign[]
+  categories       Category[]
+  customers        Customer[]
+  expenses         Expense[]
   financialRecords FinancialRecord[]
+  products         Product[]
+  purchases        Purchase[]
+  sales            Sale[]
+  suppliers        Supplier[]
+  users            User[]
 }
 
 model User {
@@ -36,14 +32,11 @@ model User {
   role          Role      @default(STAFF)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-
-  storeId String
-  store   Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  
-  storeName String?
-
-  sessions Session[]
-  accounts Account[]
+  storeId       String
+  storeName     String?
+  accounts      Account[]
+  sessions      Session[]
+  store         Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
   @@index([storeId])
   @@map("user")
@@ -68,7 +61,6 @@ model Account {
   accountId             String
   providerId            String
   userId                String
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   accessToken           String?
   refreshToken          String?
   idToken               String?
@@ -78,6 +70,7 @@ model Account {
   password              String?
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("account")
 }
@@ -93,48 +86,37 @@ model Verification {
   @@map("verification")
 }
 
-enum Role {
-  OWNER
-  MANAGER
-  STAFF
-}
-
-// -----------------------------------------------------------------------------
-// Products & Inventory
-// -----------------------------------------------------------------------------
 model Category {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  storeId  String
-  store    Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  products Product[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  storeId   String
+  store     Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  products  Product[]
 
   @@index([storeId])
 }
 
 model Product {
-  id            String   @id @default(uuid())
+  id            String          @id @default(uuid())
   name          String
   sku           String?
-  purchasePrice Float // COGS
+  purchasePrice Float
   sellingPrice  Float
-  stockLevel    Int      @default(0)
-  lowStockAlert Int      @default(5)
-  isFollowed   Boolean    @default(false)
-  status       String     @default("ACTIVE") // ACTIVE, INACTIVE, ARCHIVED
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  storeId    String
-  store      Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  categoryId String?
-  category   Category?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  saleItems  SaleItem[]
-  movements  StockMovement[]
-  campaigns  Campaign[]
+  stockLevel    Int             @default(0)
+  lowStockAlert Int             @default(5)
+  isFollowed    Boolean         @default(false)
+  status        String          @default("ACTIVE")
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  storeId       String
+  categoryId    String?
+  campaigns     Campaign[]
+  category      Category?       @relation(fields: [categoryId], references: [id])
+  store         Store           @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  saleItems     SaleItem[]
+  movements     StockMovement[]
 
   @@index([storeId])
   @@index([categoryId])
@@ -144,34 +126,29 @@ model Product {
 model StockMovement {
   id        String   @id @default(uuid())
   productId String
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  quantity  Int      // Positive for restock, negative for sales/adjustments
-  type      String   // SALE, ADJUSTMENT, RESTOCK, RETURN
+  quantity  Int
+  type      String
   reason    String?
   createdAt DateTime @default(now())
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@index([productId])
 }
 
-// -----------------------------------------------------------------------------
-// Marketing & CRM
-// -----------------------------------------------------------------------------
 model Campaign {
-  id        String    @id @default(uuid())
+  id        String     @id @default(uuid())
   name      String
-  channel   String // e.g., Facebook, Google Ads, Email
+  channel   String
   budget    Float
   startDate DateTime
   endDate   DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
   storeId   String
-  store     Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  customers Customer[] // Customers acquired from this campaign
-  
   productId String?
-  product   Product?   @relation(fields: [productId], references: [id], onDelete: SetNull)
+  product   Product?   @relation(fields: [productId], references: [id])
+  store     Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  customers Customer[]
 
   @@index([storeId])
   @@index([productId])
@@ -179,41 +156,36 @@ model Campaign {
 }
 
 model Customer {
-  id        String   @id @default(uuid())
-  name      String
-  email     String?
-  phone     String?
-  source    String? // e.g., Organic, Ads, Social
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
+  id         String    @id @default(uuid())
+  name       String
+  email      String?
+  phone      String?
+  source     String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
   storeId    String
-  store      Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
   campaignId String?
-  campaign   Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  campaign   Campaign? @relation(fields: [campaignId], references: [id])
+  store      Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
   sales      Sale[]
 
   @@index([storeId])
   @@index([campaignId])
 }
 
-// -----------------------------------------------------------------------------
-// Transactions & Sales
-// -----------------------------------------------------------------------------
 model Sale {
-  id          String   @id @default(uuid())
-  totalAmount Float
-  amountGiven Float?   // Montant donné par le client
-  changeReturned Float? // Montant rendu au client
-  paymentMethod String @default("CASH") // "CASH", "BANK", "MOBILE_MONEY"
-  createdAt   DateTime @default(now()) // Can serve as transaction date
-  updatedAt   DateTime @updatedAt
-
-  storeId    String
-  store      Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  customerId String?
-  customer   Customer?  @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  items      SaleItem[]
+  id             String     @id @default(uuid())
+  totalAmount    Float
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  storeId        String
+  customerId     String?
+  amountGiven    Float?
+  changeReturned Float?
+  paymentMethod  String     @default("CASH")
+  customer       Customer?  @relation(fields: [customerId], references: [id])
+  store          Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  items          SaleItem[]
 
   @@index([storeId])
   @@index([customerId])
@@ -223,70 +195,60 @@ model Sale {
 model SaleItem {
   id        String   @id @default(uuid())
   quantity  Int
-  unitPrice Float // Captured at time of sale
-  unitCost  Float // COGS captured at time of sale to ensure historical accuracy
+  unitPrice Float
+  unitCost  Float
   createdAt DateTime @default(now())
-
   saleId    String
-  sale      Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
   productId String
-  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  product   Product  @relation(fields: [productId], references: [id])
+  sale      Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
 
   @@index([saleId])
   @@index([productId])
 }
 
-// -----------------------------------------------------------------------------
-// Expenses (for Net Margin calculation)
-// -----------------------------------------------------------------------------
 model Expense {
   id        String   @id @default(uuid())
   name      String
   amount    Float
   date      DateTime
-  category  String // e.g., Rent, Salaries, Utilities
+  category  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  storeId String
-  store   Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
   @@index([storeId])
   @@index([storeId, date])
 }
 
-// -----------------------------------------------------------------------------
-// Accounting (SIG, Assets, Liabilities)
-// -----------------------------------------------------------------------------
 model Supplier {
-  id        String   @id @default(uuid())
+  id        String     @id @default(uuid())
   name      String
   email     String?
   phone     String?
   address   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
   storeId   String
-  store     Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
   purchases Purchase[]
+  store     Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
   @@index([storeId])
 }
 
 model Purchase {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   amount      Float
   description String?
-  date        DateTime @default(now())
-  isPaid      Boolean  @default(true) // If false, recorded as debt
+  date        DateTime  @default(now())
+  isPaid      Boolean   @default(true)
   dueDate     DateTime?
-  createdAt   DateTime @default(now())
-
-  supplierId String
-  supplier   Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
-  storeId    String
-  store      Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  supplierId  String
+  storeId     String
+  store       Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  supplier    Supplier  @relation(fields: [supplierId], references: [id], onDelete: Cascade)
 
   @@index([storeId])
   @@index([supplierId])
@@ -294,17 +256,22 @@ model Purchase {
 
 model FinancialRecord {
   id        String   @id @default(uuid())
-  type      String?   // ASSET, LIABILITY, EQUITY
-  category  String?   // CASH, BANK, CAPITAL_INVESTED, LOAN, etc.
+  type      String?
+  category  String?
   amount    Float
   date      DateTime @default(now())
   notes     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  storeId String
-  store   Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
   @@index([storeId, type])
   @@index([storeId, category])
+}
+
+enum Role {
+  OWNER
+  MANAGER
+  STAFF
 }
