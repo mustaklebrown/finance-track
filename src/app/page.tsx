@@ -9,7 +9,13 @@ import {
   Calendar,
   LayoutDashboard,
   Package,
-  Loader2
+  Loader2,
+  Wallet,
+  Banknote,
+  Smartphone,
+  Building2,
+  ArrowDownRight,
+  ArrowUpRight
 } from 'lucide-react';
 import Link from 'next/link';
 import { 
@@ -77,6 +83,7 @@ export default function Dashboard() {
   
   const [performanceData, setPerformanceData] = useState<any>(null);
   const [detailedCategories, setDetailedCategories] = useState<any[]>([]);
+  const [treasuryData, setTreasuryData] = useState<any>(null);
 
   const [period, setPeriod] = useState<string>('THIS_MONTH');
 
@@ -164,6 +171,13 @@ export default function Dashboard() {
       const perfJson = await perfRes.json();
       setPerformanceData(perfJson.performance);
       setDetailedCategories(perfJson.categories);
+
+      // Fetch treasury data
+      const treasuryRes = await fetch(`/api/dashboard/treasury?startDate=${firstDayThisPeriod}&endDate=${lastDayThisPeriod}`);
+      if (treasuryRes.ok) {
+        const treasuryJson = await treasuryRes.json();
+        setTreasuryData(treasuryJson);
+      }
 
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
@@ -498,6 +512,158 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Treasury Section */}
+      {treasuryData && (
+        <div className="mt-8 rounded-2xl border border-zinc-200/50 bg-white/70 p-6 shadow-xl shadow-zinc-200/20 backdrop-blur-xl dark:border-zinc-800/50 dark:bg-zinc-900/70 dark:shadow-none">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 flex items-center gap-2">
+                <Wallet className="h-5 w-5 text-indigo-500" />
+                Trésorerie Immédiate
+              </h3>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">Solde en temps réel par moyen de paiement — synchronisé avec les décaissements</p>
+            </div>
+            <div className={cn(
+              "rounded-xl px-4 py-2 text-sm font-black",
+              treasuryData.totals.balance >= 0 
+                ? "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800" 
+                : "bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-800"
+            )}>
+              Solde Total: {treasuryData.totals.balance.toLocaleString()} KMF
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+            {/* Cash */}
+            {(() => {
+              const cash = treasuryData.byMethod?.CASH || { income: 0, expenses: 0, balance: 0 };
+              return (
+                <div className="rounded-xl border border-zinc-100 bg-gradient-to-br from-emerald-50/50 to-white p-5 dark:border-zinc-800 dark:from-emerald-950/10 dark:to-zinc-900">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30">
+                      <Banknote className="h-4 w-4" />
+                    </div>
+                    <span className="text-sm font-bold text-zinc-700 dark:text-zinc-300">Caisse (Espèces)</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-zinc-500 flex items-center gap-1"><ArrowUpRight className="h-3 w-3 text-emerald-500" />Entrées</span>
+                      <span className="font-bold text-emerald-600">+{cash.income.toLocaleString()} KMF</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-zinc-500 flex items-center gap-1"><ArrowDownRight className="h-3 w-3 text-rose-500" />Décaissements</span>
+                      <span className="font-bold text-rose-600">-{cash.expenses.toLocaleString()} KMF</span>
+                    </div>
+                    <div className="border-t border-zinc-200 dark:border-zinc-700 pt-2 mt-2 flex justify-between">
+                      <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400">Solde Caisse</span>
+                      <span className={cn("text-sm font-black", cash.balance >= 0 ? "text-emerald-700 dark:text-emerald-400" : "text-rose-700 dark:text-rose-400")}>
+                        {cash.balance.toLocaleString()} KMF
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Bank */}
+            {(() => {
+              const bank = treasuryData.byMethod?.BANK || { income: 0, expenses: 0, balance: 0 };
+              return (
+                <div className="rounded-xl border border-zinc-100 bg-gradient-to-br from-blue-50/50 to-white p-5 dark:border-zinc-800 dark:from-blue-950/10 dark:to-zinc-900">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 text-blue-600 dark:bg-blue-900/30">
+                      <Building2 className="h-4 w-4" />
+                    </div>
+                    <span className="text-sm font-bold text-zinc-700 dark:text-zinc-300">Banque</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-zinc-500 flex items-center gap-1"><ArrowUpRight className="h-3 w-3 text-emerald-500" />Entrées</span>
+                      <span className="font-bold text-emerald-600">+{bank.income.toLocaleString()} KMF</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-zinc-500 flex items-center gap-1"><ArrowDownRight className="h-3 w-3 text-rose-500" />Décaissements</span>
+                      <span className="font-bold text-rose-600">-{bank.expenses.toLocaleString()} KMF</span>
+                    </div>
+                    <div className="border-t border-zinc-200 dark:border-zinc-700 pt-2 mt-2 flex justify-between">
+                      <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400">Solde Banque</span>
+                      <span className={cn("text-sm font-black", bank.balance >= 0 ? "text-blue-700 dark:text-blue-400" : "text-rose-700 dark:text-rose-400")}>
+                        {bank.balance.toLocaleString()} KMF
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Mobile Money */}
+            {(() => {
+              const mobile = treasuryData.byMethod?.MOBILE || treasuryData.byMethod?.MOBILE_MONEY || { income: 0, expenses: 0, balance: 0 };
+              // Merge both MOBILE and MOBILE_MONEY keys if they both exist
+              const mobileAlt = treasuryData.byMethod?.MOBILE_MONEY || { income: 0, expenses: 0, balance: 0 };
+              const merged = {
+                income: (treasuryData.byMethod?.MOBILE?.income || 0) + (mobileAlt.income || 0),
+                expenses: (treasuryData.byMethod?.MOBILE?.expenses || 0) + (mobileAlt.expenses || 0),
+                balance: 0
+              };
+              merged.balance = merged.income - merged.expenses;
+              return (
+                <div className="rounded-xl border border-zinc-100 bg-gradient-to-br from-violet-50/50 to-white p-5 dark:border-zinc-800 dark:from-violet-950/10 dark:to-zinc-900">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-100 text-violet-600 dark:bg-violet-900/30">
+                      <Smartphone className="h-4 w-4" />
+                    </div>
+                    <span className="text-sm font-bold text-zinc-700 dark:text-zinc-300">Mobile Money</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-zinc-500 flex items-center gap-1"><ArrowUpRight className="h-3 w-3 text-emerald-500" />Entrées</span>
+                      <span className="font-bold text-emerald-600">+{merged.income.toLocaleString()} KMF</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-zinc-500 flex items-center gap-1"><ArrowDownRight className="h-3 w-3 text-rose-500" />Décaissements</span>
+                      <span className="font-bold text-rose-600">-{merged.expenses.toLocaleString()} KMF</span>
+                    </div>
+                    <div className="border-t border-zinc-200 dark:border-zinc-700 pt-2 mt-2 flex justify-between">
+                      <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400">Solde Mobile</span>
+                      <span className={cn("text-sm font-black", merged.balance >= 0 ? "text-violet-700 dark:text-violet-400" : "text-rose-700 dark:text-rose-400")}>
+                        {merged.balance.toLocaleString()} KMF
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* Recent disbursements */}
+          {treasuryData.recentDisbursements && treasuryData.recentDisbursements.length > 0 && (
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-3">Derniers décaissements</h4>
+              <div className="space-y-2">
+                {treasuryData.recentDisbursements.slice(0, 5).map((d: any) => (
+                  <div key={d.id} className="flex items-center justify-between rounded-lg border border-zinc-100 dark:border-zinc-800 px-4 py-2.5 hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-rose-100 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400">
+                        <ArrowDownRight className="h-3.5 w-3.5" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{d.name}</p>
+                        <p className="text-[11px] text-zinc-500">
+                          {new Date(d.date).toLocaleDateString('fr-FR')} · 
+                          {d.paymentMethod === 'CASH' ? ' Espèces' : d.paymentMethod === 'BANK' ? ' Banque' : ' Mobile Money'}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-sm font-bold text-rose-600">-{d.amount.toLocaleString()} KMF</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Store Performance & Category Analysis Details */}
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">

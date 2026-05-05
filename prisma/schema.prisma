@@ -208,15 +208,16 @@ model SaleItem {
 }
 
 model Expense {
-  id        String   @id @default(uuid())
-  name      String
-  amount    Float
-  date      DateTime
-  category  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  storeId   String
-  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  id            String   @id @default(uuid())
+  name          String
+  amount        Float
+  date          DateTime
+  category      String
+  paymentMethod String   @default("CASH")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  storeId       String
+  store         Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
   @@index([storeId])
   @@index([storeId, date])
@@ -238,17 +239,18 @@ model Supplier {
 }
 
 model Purchase {
-  id          String    @id @default(uuid())
-  amount      Float
-  description String?
-  date        DateTime  @default(now())
-  isPaid      Boolean   @default(true)
-  dueDate     DateTime?
-  createdAt   DateTime  @default(now())
-  supplierId  String
-  storeId     String
-  store       Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  supplier    Supplier  @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  id            String    @id @default(uuid())
+  amount        Float
+  description   String?
+  date          DateTime  @default(now())
+  isPaid        Boolean   @default(true)
+  paymentMethod String    @default("CASH")
+  dueDate       DateTime?
+  createdAt     DateTime  @default(now())
+  supplierId    String
+  storeId       String
+  store         Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  supplier      Supplier  @relation(fields: [supplierId], references: [id], onDelete: Cascade)
 
   @@index([storeId])
   @@index([supplierId])

@@ -23,7 +23,7 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await req.json();
-    const { name, amount, date, category } = body;
+    const { name, amount, date, category, paymentMethod } = body;
 
     const updated = await prisma.expense.update({
       where: { id },
@@ -31,7 +31,8 @@ export async function PATCH(
         name,
         amount,
         date: date ? new Date(date) : undefined,
-        category
+        category,
+        paymentMethod
       }
     });
 

@@ -20,7 +20,8 @@ const ExpenseSchema = z.object({
   name: z.string().min(1, 'Le nom est requis'),
   amount: z.number().min(0, 'Le montant doit être positif'),
   date: z.string().min(1, 'La date est requise'),
-  category: z.string().min(1, 'La catégorie est requise')
+  category: z.string().min(1, 'La catégorie est requise'),
+  paymentMethod: z.string()
 });
 type ExpenseFormData = z.infer<typeof ExpenseSchema>;
 
@@ -30,6 +31,7 @@ interface Expense {
   amount: number;
   date: string;
   category: string;
+  paymentMethod: string;
 }
 
 export default function ExpensesPage() {
@@ -45,12 +47,13 @@ export default function ExpensesPage() {
     setValue,
     formState: { errors, isSubmitting }
   } = useForm<ExpenseFormData>({
-    resolver: zodResolver(ExpenseSchema),
+    resolver: zodResolver(ExpenseSchema) as any,
     defaultValues: {
       name: '',
       amount: 0,
       date: new Date().toISOString().split('T')[0],
-      category: 'Fixed'
+      category: 'Fixed',
+      paymentMethod: 'CASH'
     }
   });
 
@@ -101,6 +104,7 @@ export default function ExpensesPage() {
     setValue('name', expense.name);
     setValue('amount', expense.amount);
     setValue('category', expense.category);
+    setValue('paymentMethod', expense.paymentMethod || 'CASH');
     setValue('date', expense.date.split('T')[0]);
     setShowAddForm(true);
   };
@@ -136,7 +140,7 @@ export default function ExpensesPage() {
           <button 
             onClick={() => {
               setEditingExpenseId(null);
-              reset({ date: new Date().toISOString().split('T')[0], amount: 0, name: '', category: 'Fixed' });
+              reset({ date: new Date().toISOString().split('T')[0], amount: 0, name: '', category: 'Fixed', paymentMethod: 'CASH' });
               setShowAddForm(true);
             }}
             className="flex items-center gap-2 rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white shadow-lg transition-all hover:bg-rose-700 active:scale-95"
@@ -178,6 +182,7 @@ export default function ExpensesPage() {
                 <th className="px-6 py-4 font-semibold text-zinc-600 dark:text-zinc-400">Date</th>
                 <th className="px-6 py-4 font-semibold text-zinc-600 dark:text-zinc-400">Description</th>
                 <th className="px-6 py-4 font-semibold text-zinc-600 dark:text-zinc-400">Catégorie</th>
+                <th className="px-6 py-4 font-semibold text-zinc-600 dark:text-zinc-400">Moyen de paiement</th>
                 <th className="px-6 py-4 font-semibold text-zinc-600 dark:text-zinc-400 text-right">Montant</th>
                 <th className="px-6 py-4 text-right sticky right-0 z-10 bg-zinc-50/50 dark:bg-zinc-900/50 backdrop-blur-sm shadow-[-10px_0_15px_-5px_rgba(0,0,0,0.05)]">Actions</th>
               </tr>
@@ -189,12 +194,13 @@ export default function ExpensesPage() {
                     <td className="px-6 py-4"><div className="h-4 w-24 rounded bg-zinc-100 dark:bg-zinc-800" /></td>
                     <td className="px-6 py-4"><div className="h-4 w-48 rounded bg-zinc-100 dark:bg-zinc-800" /></td>
                     <td className="px-6 py-4"><div className="h-4 w-20 rounded bg-zinc-100 dark:bg-zinc-800" /></td>
+                    <td className="px-6 py-4"><div className="h-4 w-20 rounded bg-zinc-100 dark:bg-zinc-800" /></td>
                     <td className="px-6 py-4 flex justify-end"><div className="h-4 w-16 rounded bg-zinc-100 dark:bg-zinc-800" /></td>
                   </tr>
                 ))
               ) : expenses.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-12 text-center text-zinc-500">
+                  <td colSpan={5} className="px-6 py-12 text-center text-zinc-500">
                     Aucune dépense enregistrée. Cliquez sur "Nouvelle Dépense".
                   </td>
                 </tr>
@@ -210,6 +216,11 @@ export default function ExpensesPage() {
                     <td className="px-6 py-4">
                       <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
                         {expense.category}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-xs font-medium text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
+                        {expense.paymentMethod === 'CASH' ? 'Espèces' : expense.paymentMethod === 'BANK' ? 'Banque' : expense.paymentMethod === 'MOBILE' ? 'Mobile Money' : expense.paymentMethod}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right font-mono font-semibold text-rose-600">
@@ -280,6 +291,18 @@ export default function ExpensesPage() {
                   <option value="Variable">Frais Variables (Marchandise...)</option>
                   <option value="Marketing">Marketing / Publicité</option>
                   <option value="Autre">Autre</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-1.5">Moyen de paiement *</label>
+                <select 
+                  {...register('paymentMethod')}
+                  className={cn("w-full rounded-xl border bg-zinc-50/50 px-4 py-2.5 outline-none focus:ring-2 focus:ring-rose-500/20 dark:bg-black/50 dark:border-zinc-800", errors.paymentMethod ? "border-rose-500" : "border-zinc-200")}
+                >
+                  <option value="CASH">Espèces</option>
+                  <option value="BANK">Banque / Chèque</option>
+                  <option value="MOBILE">Mobile Money</option>
                 </select>
               </div>
 

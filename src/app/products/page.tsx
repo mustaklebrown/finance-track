@@ -15,7 +15,8 @@ import {
   EyeOff,
   Trash2,
   Edit2,
-  AlertCircle
+  AlertCircle,
+  ShoppingCart
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -45,6 +46,10 @@ export default function ProductsPage() {
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  
+  const [showRestockForm, setShowRestockForm] = useState(false);
+  const [restockProduct, setRestockProduct] = useState<Product | null>(null);
+  const [restockData, setRestockData] = useState({ quantity: 1, purchasePrice: 0, paymentMethod: 'CASH' });
 
   const {
     register,
@@ -163,6 +168,30 @@ export default function ProductsPage() {
       });
     } catch (error) {
       console.error('Failed to adjust stock:', error);
+    }
+  };
+
+  const handleRestockSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!restockProduct) return;
+    
+    try {
+      const res = await fetch(`/api/products/${restockProduct.id}/restock`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(restockData)
+      });
+      
+      if (res.ok) {
+        setShowRestockForm(false);
+        setRestockProduct(null);
+        fetchProducts();
+      } else {
+        const errorData = await res.json();
+        alert('Erreur: ' + (errorData.error || 'Erreur inconnue'));
+      }
+    } catch (error) {
+      console.error('Failed to restock:', error);
     }
   };
 
@@ -340,6 +369,17 @@ export default function ProductsPage() {
                     <td className="px-6 py-4 text-right sticky right-0 z-10 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-xs transition-colors group-hover:bg-zinc-50/90 dark:group-hover:bg-zinc-800/90 border-l border-zinc-100 dark:border-zinc-800/50">
                       <div className="flex items-center justify-end gap-2 transition-opacity">
                         <button 
+                          onClick={() => {
+                            setRestockProduct(product);
+                            setRestockData({ quantity: 1, purchasePrice: product.purchasePrice, paymentMethod: 'CASH' });
+                            setShowRestockForm(true);
+                          }}
+                          title="Approvisionner"
+                          className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-emerald-600 hover:text-emerald-700"
+                        >
+                          <ShoppingCart className="h-4 w-4" />
+                        </button>
+                        <button 
                           onClick={() => editProduct(product)}
                           className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-600"
                         >
@@ -465,6 +505,79 @@ export default function ProductsPage() {
                   className="flex-1 rounded-xl bg-black px-4 py-2.5 text-sm font-semibold text-white shadow-lg transition-opacity hover:opacity-90 disabled:opacity-50 dark:bg-white dark:text-black"
                 >
                   {isSubmitting ? 'Enregistrement...' : 'Enregistrer'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Restock Modal */}
+      {showRestockForm && restockProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowRestockForm(false)} />
+          <div className="relative w-full max-w-sm rounded-3xl bg-white p-8 shadow-2xl dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-500">
+                <ShoppingCart className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold">Approvisionner</h2>
+                <p className="text-xs text-zinc-500">{restockProduct.name}</p>
+              </div>
+            </div>
+            
+            <form onSubmit={handleRestockSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-1.5">Quantité achetée *</label>
+                <input 
+                  type="number" 
+                  min="1"
+                  required
+                  value={restockData.quantity}
+                  onChange={e => setRestockData({...restockData, quantity: parseInt(e.target.value) || 0})}
+                  className="w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-4 py-2.5 outline-none focus:ring-2 focus:ring-black/5 dark:bg-black/50 dark:border-zinc-800"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-1.5">Prix d'Achat unitaire *</label>
+                <input 
+                  type="number" 
+                  step="0.01"
+                  required
+                  value={restockData.purchasePrice}
+                  onChange={e => setRestockData({...restockData, purchasePrice: parseFloat(e.target.value) || 0})}
+                  className="w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-4 py-2.5 outline-none focus:ring-2 focus:ring-black/5 dark:bg-black/50 dark:border-zinc-800"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-1.5">Moyen de décaissement *</label>
+                <select 
+                  value={restockData.paymentMethod}
+                  onChange={e => setRestockData({...restockData, paymentMethod: e.target.value})}
+                  className="w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-4 py-2.5 outline-none focus:ring-2 focus:ring-black/5 dark:bg-black/50 dark:border-zinc-800"
+                >
+                  <option value="CASH">Caisse (Espèces)</option>
+                  <option value="BANK">Banque / Chèque</option>
+                  <option value="MOBILE">Mobile Money</option>
+                </select>
+              </div>
+              
+              <div className="flex items-center gap-3 pt-4">
+                <button 
+                  type="button"
+                  onClick={() => setShowRestockForm(false)}
+                  className="flex-1 rounded-xl border border-zinc-200 px-4 py-2.5 text-sm font-semibold hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900"
+                >
+                  Annuler
+                </button>
+                <button 
+                  type="submit"
+                  className="flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg transition-all hover:bg-emerald-700"
+                >
+                  Enregistrer
                 </button>
               </div>
             </form>

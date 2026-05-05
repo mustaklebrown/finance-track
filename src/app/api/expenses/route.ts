@@ -7,7 +7,8 @@ const ExpenseSchema = z.object({
   name: z.string().min(1, 'Le nom est requis'),
   amount: z.number().min(0, 'Le montant doit être positif'),
   date: z.string(),
-  category: z.string().min(1, 'La catégorie est requise')
+  category: z.string().min(1, 'La catégorie est requise'),
+  paymentMethod: z.string().optional().default("CASH")
 });
 
 export async function POST(req: Request) {
@@ -25,6 +26,7 @@ export async function POST(req: Request) {
          amount: validated.amount,
          date: new Date(validated.date),
          category: validated.category,
+         paymentMethod: validated.paymentMethod,
          storeId: store.id
       }
     });

@@ -33,24 +33,26 @@ export class ProductService {
     });
   }
 
-  static async create(storeId: string, data: CreateProductData) {
+  static async create(storeId: string, data: CreateProductData & { paymentMethod?: string }) {
+    const { paymentMethod, ...productData } = data;
     return await prisma.$transaction(async (tx) => {
       const product = await tx.product.create({
         data: {
-          ...data,
+          ...productData,
           storeId,
         },
       });
 
       // If initial stock is greater than 0, create an automatic expense for the inventory purchase
-      if (data.stockLevel && data.stockLevel > 0) {
-        const inventoryCost = data.purchasePrice * data.stockLevel;
+      if (productData.stockLevel && productData.stockLevel > 0) {
+        const inventoryCost = productData.purchasePrice * productData.stockLevel;
         await tx.expense.create({
           data: {
-            name: `Achat stock initial: ${data.name}`,
+            name: `Achat stock initial: ${productData.name}`,
             amount: inventoryCost,
             date: new Date(),
             category: 'Achat Stock',
+            paymentMethod: paymentMethod || 'CASH',
             storeId,
           }
         });
@@ -60,19 +62,20 @@ export class ProductService {
     });
   }
 
-  static async update(id: string, data: Partial<CreateProductData>) {
+  static async update(id: string, data: Partial<CreateProductData> & { paymentMethod?: string }) {
+    const { paymentMethod, ...productData } = data;
     return await prisma.$transaction(async (tx) => {
       const oldProduct = await tx.product.findUnique({ where: { id } });
       if (!oldProduct) throw new Error('Product not found');
 
       const updatedProduct = await tx.product.update({
         where: { id },
-        data,
+        data: productData as any,
       });
 
       // Handle stock and expenses
-      if (data.stockLevel !== undefined && data.stockLevel !== oldProduct.stockLevel) {
-        const diff = data.stockLevel - oldProduct.stockLevel;
+      if (productData.stockLevel !== undefined && productData.stockLevel !== oldProduct.stockLevel) {
+        const diff = productData.stockLevel - oldProduct.stockLevel;
         
         await tx.stockMovement.create({
           data: {
@@ -85,13 +88,14 @@ export class ProductService {
 
         // If stock is INCREASED, money must have been spent to buy it (Cash flow decrease)
         if (diff > 0) {
-          const costToBuy = (data.purchasePrice ?? oldProduct.purchasePrice) * diff;
+          const costToBuy = (productData.purchasePrice ?? oldProduct.purchasePrice) * diff;
           await tx.expense.create({
             data: {
               name: `Restockage: ${updatedProduct.name} (+${diff} unités)`,
               amount: costToBuy,
               date: new Date(),
               category: 'Achat Stock',
+              paymentMethod: paymentMethod || 'CASH',
               storeId: oldProduct.storeId,
             }
           });
