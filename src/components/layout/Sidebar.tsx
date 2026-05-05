@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { authClient } from '@/lib/auth-client';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -133,6 +134,7 @@ export function Sidebar() {
               <p className="text-sm font-medium truncate">{user.name}</p>
               <p className="text-xs text-zinc-500 truncate lowercase">{role}</p>
             </div>
+            <ThemeToggle />
           </div>
           <button 
             onClick={handleLogout}

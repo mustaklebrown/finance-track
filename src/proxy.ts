@@ -1,40 +1,51 @@
-import { type NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+
+const publicRoutes = ["/login", "/register", "/forgot-password", "/reset-password"];
 
 export async function proxy(request: NextRequest) {
-  // We check for the session via the API route to avoid importing Node.js-only modules (like Prisma)
-  // into the Edge runtime, which causes the 'crypto' module error.
-  let session = null;
-  try {
-    const res = await fetch(`${request.nextUrl.origin}/api/auth/get-session`, {
-      headers: {
-        cookie: request.headers.get('cookie') || '',
-      },
-    });
-    if (res.ok) {
-      session = await res.json();
-    }
-  } catch (error) {
-    console.error('Auth check failed in middleware:', error);
+  const { pathname } = request.nextUrl;
+  
+  const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route));
+  const isApiRoute = pathname.startsWith("/api");
+
+  // Prevent infinite loop by not intercepting /api/auth routes
+  if (pathname.startsWith("/api/auth")) {
+    return NextResponse.next();
   }
 
-  if (!session) {
-    const url = new URL('/login', request.url);
-    return NextResponse.redirect(url);
+  try {
+    const sessionResponse = await fetch(new URL("/api/auth/get-session", request.url), {
+      headers: {
+        cookie: request.headers.get("cookie") || "",
+      },
+    });
+
+    const sessionData = await sessionResponse.json().catch(() => null);
+    const isAuthenticated = !!sessionData?.session;
+
+    // Si non authentifié et essaie d'accéder à une route protégée
+    if (!isAuthenticated) {
+      if (!isPublicRoute && !isApiRoute) {
+        return NextResponse.redirect(new URL("/login", request.url));
+      }
+      return NextResponse.next();
+    }
+
+    // Si authentifié et essaie d'accéder à une route publique (ex: /login)
+    if (isPublicRoute) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+  } catch (error) {
+    // En cas d'erreur de vérification, on redirige vers le login par sécurité
+    if (!isPublicRoute && !isApiRoute) {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
   }
+
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api/auth (auth API routes)
-     * - login (login page)
-     * - register (register page)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico, icon.png (favicon file)
-     */
-    '/((?!api/auth|login|register|forgot-password|reset-password|_next/static|_next/image|favicon.ico|icon.png).*)',
-  ],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
 };
