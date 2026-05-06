@@ -23,6 +23,14 @@ export class TreasuryService {
       _count: { id: true }
     });
 
+    // 2b. Purchases grouped by paymentMethod (outflows)
+    const purchasesByMethod = await prisma.purchase.groupBy({
+      by: ['paymentMethod'],
+      where: { storeId, isPaid: true },
+      _sum: { amount: true },
+      _count: { id: true }
+    });
+
     // 3. Financial Records (ASSET entries = inflows, LIABILITY = outflows) by paymentMethod
     const financialRecords = await prisma.financialRecord.findMany({
       where: { storeId },
@@ -57,6 +65,14 @@ export class TreasuryService {
       ensureMethod(method);
       treasuryMap[method].expenses += e._sum.amount || 0;
       treasuryMap[method].txCount += e._count.id || 0;
+    }
+
+    // Purchases = outflows
+    for (const p of purchasesByMethod) {
+      const method = p.paymentMethod || 'CASH';
+      ensureMethod(method);
+      treasuryMap[method].expenses += p._sum.amount || 0;
+      treasuryMap[method].txCount += p._count.id || 0;
     }
 
     // Financial Records: ASSET/EQUITY = capital injected (income), LIABILITY = debt (not cash out)
@@ -112,6 +128,14 @@ export class TreasuryService {
       _count: { id: true }
     });
 
+    // Purchases in period
+    const purchasesByMethod = await prisma.purchase.groupBy({
+      by: ['paymentMethod'],
+      where: { storeId, isPaid: true, date: { gte: startDate, lte: endDate } },
+      _sum: { amount: true },
+      _count: { id: true }
+    });
+
     // Financial Records in period
     const financialRecords = await prisma.financialRecord.findMany({
       where: { storeId, date: { gte: startDate, lte: endDate } },
@@ -145,6 +169,13 @@ export class TreasuryService {
       treasuryMap[method].txCount += e._count.id || 0;
     }
 
+    for (const p of purchasesByMethod) {
+      const method = p.paymentMethod || 'CASH';
+      ensureMethod(method);
+      treasuryMap[method].expenses += p._sum.amount || 0;
+      treasuryMap[method].txCount += p._count.id || 0;
+    }
+
     for (const fr of financialRecords) {
       const method = fr.paymentMethod || 'CASH';
       ensureMethod(method);
@@ -163,7 +194,7 @@ export class TreasuryService {
     const totalBalance = totalIncome - totalExpenses;
 
     // Recent movements (last 10 disbursements)
-    const recentDisbursements = await prisma.expense.findMany({
+    const recentExpenses = await prisma.expense.findMany({
       where: { storeId, date: { gte: startDate, lte: endDate } },
       orderBy: { date: 'desc' },
       take: 10,
@@ -176,6 +207,31 @@ export class TreasuryService {
         paymentMethod: true,
       }
     });
+
+    const recentPurchases = await prisma.purchase.findMany({
+      where: { storeId, isPaid: true, date: { gte: startDate, lte: endDate } },
+      orderBy: { date: 'desc' },
+      take: 10,
+      select: {
+        id: true,
+        description: true,
+        amount: true,
+        date: true,
+        paymentMethod: true,
+      }
+    });
+
+    const recentDisbursements = [
+      ...recentExpenses,
+      ...recentPurchases.map(p => ({
+        id: p.id,
+        name: p.description || 'Achat de produits',
+        amount: p.amount,
+        date: p.date,
+        category: 'Achat',
+        paymentMethod: p.paymentMethod,
+      }))
+    ].sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 10);
 
     // Recent capital/asset entries
     const recentCapitalEntries = await prisma.financialRecord.findMany({
