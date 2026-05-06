@@ -17,10 +17,12 @@ import {
   Send,
   MessageCircle,
   Share2,
-  FileText
+  FileText,
+  Download
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { ExportPresets } from '@/lib/export';
 
 interface Product {
   id: string;
@@ -251,13 +253,23 @@ export default function SalesPage() {
           <p className="text-zinc-500 text-sm">Saisissez les ventes de chaque produit par journée</p>
         </div>
 
-        <button
-          onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-emerald-600/20 transition-all hover:bg-emerald-700 active:scale-95"
-        >
-          <Plus className="h-4 w-4" />
-          Saisir les Ventes du Jour
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => ExportPresets.sales(sales)}
+            disabled={sales.length === 0}
+            className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 transition-all hover:bg-zinc-50 active:scale-95 disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+          >
+            <Download className="h-4 w-4" />
+            Exporter Excel
+          </button>
+          <button
+            onClick={() => setShowForm(true)}
+            className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-emerald-600/20 transition-all hover:bg-emerald-700 active:scale-95"
+          >
+            <Plus className="h-4 w-4" />
+            Saisir les Ventes du Jour
+          </button>
+        </div>
       </header>
 
       {/* Stats */}

@@ -10,10 +10,12 @@ import {
   TrendingDown,
   Trash2,
   Calendar,
-  Edit2
+  Edit2,
+  Download
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { ExportPresets } from '@/lib/export';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 
@@ -139,6 +141,14 @@ export default function ExpensesPage() {
         </div>
         
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => ExportPresets.expenses(expenses)}
+            disabled={expenses.length === 0}
+            className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 transition-all hover:bg-zinc-50 active:scale-95 disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+          >
+            <Download className="h-4 w-4" />
+            Exporter Excel
+          </button>
           <button 
             onClick={() => {
               setEditingExpenseId(null);
