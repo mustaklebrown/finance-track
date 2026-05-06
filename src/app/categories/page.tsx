@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { Pagination, usePagination } from '@/components/Pagination';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CategorySchema, type CategoryFormData } from '@/lib/validations/category';
@@ -27,6 +28,7 @@ export default function CategoriesPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const categoriesPagination = usePagination(10);
 
   const {
     register,
@@ -182,7 +184,7 @@ export default function CategoriesPage() {
                   </td>
                 </tr>
               ) : (
-                categories.map((cat) => (
+                categoriesPagination.paginate(categories).map((cat) => (
                   <tr key={cat.id} className="group transition-colors hover:bg-zinc-50/50 dark:hover:bg-zinc-800/50">
                     <td className="px-6 py-4 font-semibold text-zinc-900 dark:text-zinc-100">
                       {cat.name}
@@ -221,6 +223,13 @@ export default function CategoriesPage() {
             </tbody>
           </table>
         </div>
+        <Pagination
+          currentPage={categoriesPagination.page}
+          totalItems={categories.length}
+          itemsPerPage={categoriesPagination.perPage}
+          onPageChange={categoriesPagination.setPage}
+          onItemsPerPageChange={categoriesPagination.setPerPage}
+        />
       </div>
 
       {/* Zod + React Hook Form Modal */}

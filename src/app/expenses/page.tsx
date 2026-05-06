@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { Pagination, usePagination } from '@/components/Pagination';
 import { useForm } from 'react-hook-form';
 import { 
   Receipt, 
@@ -39,6 +40,7 @@ export default function ExpensesPage() {
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
+  const expensesPagination = usePagination(10);
 
   const {
     register,
@@ -205,7 +207,7 @@ export default function ExpensesPage() {
                   </td>
                 </tr>
               ) : (
-                expenses.map((expense) => (
+                expensesPagination.paginate(expenses).map((expense) => (
                   <tr key={expense.id} className="group transition-colors hover:bg-zinc-50/50 dark:hover:bg-zinc-800/50">
                     <td className="px-6 py-4 text-zinc-600 dark:text-zinc-400">
                       {new Date(expense.date).toLocaleDateString('fr-FR')}
@@ -248,6 +250,13 @@ export default function ExpensesPage() {
             </tbody>
           </table>
         </div>
+        <Pagination
+          currentPage={expensesPagination.page}
+          totalItems={expenses.length}
+          itemsPerPage={expensesPagination.perPage}
+          onPageChange={expensesPagination.setPage}
+          onItemsPerPageChange={expensesPagination.setPerPage}
+        />
       </div>
 
       {/* Add Expense Form Modal */}

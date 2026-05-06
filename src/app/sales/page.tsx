@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { Pagination, usePagination } from '@/components/Pagination';
 import {
   Banknote,
   Plus,
@@ -53,6 +54,7 @@ export default function SalesPage() {
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
+  const salesPagination = usePagination(10);
 
   // Form state
   const [saleDate, setSaleDate] = useState(new Date().toISOString().split('T')[0]);
@@ -304,12 +306,12 @@ export default function SalesPage() {
                 ))
               ) : sales.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="px-6 py-12 text-center text-zinc-500">
+                  <td colSpan={4} className="px-6 py-12 text-center text-zinc-500">
                     Aucune vente enregistrée. Cliquez sur "Saisir les Ventes du Jour".
                   </td>
                 </tr>
               ) : (
-                sales.map((sale) => (
+                salesPagination.paginate(sales).map((sale) => (
                   <tr key={sale.id} className="group transition-colors hover:bg-emerald-50/30 dark:hover:bg-emerald-950/10">
                     <td className="px-6 py-4 font-medium text-zinc-900 dark:text-zinc-100 whitespace-nowrap">
                       {new Date(sale.createdAt).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'long' })}
@@ -350,6 +352,13 @@ export default function SalesPage() {
             </tbody>
           </table>
         </div>
+        <Pagination
+          currentPage={salesPagination.page}
+          totalItems={sales.length}
+          itemsPerPage={salesPagination.perPage}
+          onPageChange={salesPagination.setPage}
+          onItemsPerPageChange={salesPagination.setPerPage}
+        />
       </div>
 
       {/* Multi-Product Sale Form Modal */}

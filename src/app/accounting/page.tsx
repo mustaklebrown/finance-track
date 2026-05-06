@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { Pagination, usePagination } from '@/components/Pagination';
 import { 
   BarChart, 
   Bar, 
@@ -116,6 +117,8 @@ export default function AccountingPage() {
     }
   };
 
+  const recordsPagination = usePagination(10);
+
   if (loading && !data) {
     return (
       <div className="flex flex-1 items-center justify-center p-8 bg-zinc-50 dark:bg-black h-screen">
@@ -125,6 +128,7 @@ export default function AccountingPage() {
   }
 
   const { balanceSheet, sig, records = [] } = data || {};
+  const paginatedRecords = recordsPagination.paginate(records);
 
   const handleDeleteRecord = async (id: string) => {
     if (!confirm('Êtes-vous sûr de vouloir supprimer cette ligne comptable ? Cela recalculera votre Bilan.')) return;
@@ -381,12 +385,12 @@ export default function AccountingPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800">
-              {records.length === 0 ? (
+              {paginatedRecords.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-8 text-center text-zinc-400">Aucune saisie manuelle pour ce mois.</td>
                 </tr>
               ) : (
-                records.map((rec: any) => (
+                paginatedRecords.map((rec: any) => (
                   <tr key={rec.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30 transition-colors">
                     <td className="px-6 py-4 text-zinc-600 dark:text-zinc-400 whitespace-nowrap">
                       {new Date(rec.date || rec.createdAt).toLocaleDateString('fr-FR')}
@@ -435,6 +439,13 @@ export default function AccountingPage() {
             </tbody>
           </table>
         </div>
+        <Pagination
+          currentPage={recordsPagination.page}
+          totalItems={records.length}
+          itemsPerPage={recordsPagination.perPage}
+          onPageChange={recordsPagination.setPage}
+          onItemsPerPageChange={recordsPagination.setPerPage}
+        />
       </div>
 
       {/* Entry Form Modal */}

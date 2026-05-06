@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { Pagination, usePagination } from '@/components/Pagination';
 import { useForm, type SubmitHandler, type Resolver } from 'react-hook-form';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -49,6 +50,7 @@ export default function ProductsPage() {
   
   const [showRestockForm, setShowRestockForm] = useState(false);
   const [restockProduct, setRestockProduct] = useState<Product | null>(null);
+  const productsPagination = usePagination(10);
   const [restockData, setRestockData] = useState({ quantity: 1, purchasePrice: 0, paymentMethod: 'CASH' });
 
   const {
@@ -314,7 +316,7 @@ export default function ProductsPage() {
                   </td>
                 </tr>
               ) : (
-                products.map((product) => (
+                productsPagination.paginate(products).map((product) => (
                   <tr key={product.id} className="group transition-colors hover:bg-zinc-50/50 dark:hover:bg-zinc-800/50">
                     <td className="px-6 py-4">
                       <Link href={`/products/${product.id}`} className="group/link flex flex-col items-start hover:bg-transparent">
@@ -399,6 +401,13 @@ export default function ProductsPage() {
             </tbody>
           </table>
         </div>
+        <Pagination
+          currentPage={productsPagination.page}
+          totalItems={products.length}
+          itemsPerPage={productsPagination.perPage}
+          onPageChange={productsPagination.setPage}
+          onItemsPerPageChange={productsPagination.setPerPage}
+        />
       </div>
 
       {showAddForm && (
