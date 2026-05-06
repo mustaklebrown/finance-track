@@ -58,6 +58,11 @@ export default function SalesPage() {
   const [successMsg, setSuccessMsg] = useState('');
   const salesPagination = usePagination(10);
 
+  // Filter state
+  const [filterDate, setFilterDate] = useState('');
+  const [filterMinAmount, setFilterMinAmount] = useState<number | ''>('');
+  const [filterMaxAmount, setFilterMaxAmount] = useState<number | ''>('');
+
   // Form state
   const [saleDate, setSaleDate] = useState(new Date().toISOString().split('T')[0]);
   const [entries, setEntries] = useState<SaleEntry[]>([]);
@@ -228,6 +233,21 @@ export default function SalesPage() {
     !entries.find(e => e.productId === p.id)
   );
 
+  const filteredSales = sales.filter(sale => {
+    // Filter by date
+    if (filterDate) {
+      const saleDateStr = new Date(sale.createdAt).toISOString().split('T')[0];
+      if (saleDateStr !== filterDate) return false;
+    }
+
+    // Filter by amount
+    if (filterMinAmount !== '' && sale.totalAmount < filterMinAmount) return false;
+    if (filterMaxAmount !== '' && sale.totalAmount > filterMaxAmount) return false;
+
+    return true;
+  });
+
+  const totalFilteredRevenue = filteredSales.reduce((acc, s) => acc + s.totalAmount, 0);
   const totalMonthRevenue = sales.reduce((acc, s) => acc + s.totalAmount, 0);
 
   return (
@@ -273,22 +293,103 @@ export default function SalesPage() {
       </header>
 
       {/* Stats */}
-      <div className="mb-8 grid grid-cols-1 gap-6 sm:grid-cols-2">
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Total Filtré */}
         <div className="rounded-2xl border border-zinc-100 bg-white p-5 shadow-sm dark:bg-zinc-900 dark:border-zinc-800">
           <div className="flex items-center gap-3 text-zinc-500 dark:text-zinc-400 mb-1">
             <TrendingUp className="h-4 w-4 text-emerald-500" />
-            <span className="text-xs font-medium uppercase tracking-wider">Total Enregistré (Mois)</span>
+            <span className="text-xs font-medium uppercase tracking-wider">Total Filtré</span>
           </div>
           <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-500">
+            {totalFilteredRevenue.toLocaleString()} KMF
+          </div>
+        </div>
+
+        {/* Transactions Filtrées */}
+        <div className="rounded-2xl border border-zinc-100 bg-white p-5 shadow-sm dark:bg-zinc-900 dark:border-zinc-800">
+          <div className="flex items-center gap-3 text-zinc-500 dark:text-zinc-400 mb-1">
+            <Banknote className="h-4 w-4 text-emerald-500" />
+            <span className="text-xs font-medium uppercase tracking-wider">Transactions Filtrées</span>
+          </div>
+          <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-500">
+            {filteredSales.length}
+          </div>
+        </div>
+
+        {/* Total Global */}
+        <div className="rounded-2xl border border-zinc-100 bg-white p-5 shadow-sm dark:bg-zinc-900 dark:border-zinc-800">
+          <div className="flex items-center gap-3 text-zinc-500 dark:text-zinc-400 mb-1">
+            <TrendingUp className="h-4 w-4 text-blue-500" />
+            <span className="text-xs font-medium uppercase tracking-wider">Total Global (Mois)</span>
+          </div>
+          <div className="text-2xl font-bold text-blue-600 dark:text-blue-500">
             {totalMonthRevenue.toLocaleString()} KMF
           </div>
         </div>
+
+        {/* Transactions Totales */}
         <div className="rounded-2xl border border-zinc-100 bg-white p-5 shadow-sm dark:bg-zinc-900 dark:border-zinc-800">
           <div className="flex items-center gap-3 text-zinc-500 dark:text-zinc-400 mb-1">
-            <Banknote className="h-4 w-4" />
-            <span className="text-xs font-medium uppercase tracking-wider">Transactions Enregistrées</span>
+            <Banknote className="h-4 w-4 text-blue-500" />
+            <span className="text-xs font-medium uppercase tracking-wider">Transactions Globales</span>
           </div>
-          <div className="text-2xl font-bold">{sales.length}</div>
+          <div className="text-2xl font-bold text-blue-600 dark:text-blue-500">{sales.length}</div>
+        </div>
+      </div>
+
+      {/* Filters Section */}
+      <div className="mb-8 rounded-2xl border border-zinc-100 bg-white p-6 shadow-sm dark:bg-zinc-900 dark:border-zinc-800">
+        <div className="flex flex-col md:flex-row md:items-end gap-4">
+          <div className="flex-1 space-y-1.5">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-2">
+              <Calendar className="h-3 w-3" />
+              Filtrer par Date
+            </label>
+            <input
+              type="date"
+              value={filterDate}
+              onChange={(e) => setFilterDate(e.target.value)}
+              className="w-full h-10 rounded-xl border border-zinc-200 bg-zinc-50/50 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 dark:bg-black/50 dark:border-zinc-800"
+            />
+          </div>
+          <div className="flex-1 space-y-1.5">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-2">
+              <TrendingUp className="h-3 w-3" />
+              Montant Min (KMF)
+            </label>
+            <input
+              type="number"
+              placeholder="Min"
+              value={filterMinAmount}
+              onChange={(e) => setFilterMinAmount(e.target.value ? Number(e.target.value) : '')}
+              className="w-full h-10 rounded-xl border border-zinc-200 bg-zinc-50/50 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 dark:bg-black/50 dark:border-zinc-800"
+            />
+          </div>
+          <div className="flex-1 space-y-1.5">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-2">
+              <TrendingUp className="h-3 w-3 rotate-180" />
+              Montant Max (KMF)
+            </label>
+            <input
+              type="number"
+              placeholder="Max"
+              value={filterMaxAmount}
+              onChange={(e) => setFilterMaxAmount(e.target.value ? Number(e.target.value) : '')}
+              className="w-full h-10 rounded-xl border border-zinc-200 bg-zinc-50/50 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 dark:bg-black/50 dark:border-zinc-800"
+            />
+          </div>
+          {(filterDate || filterMinAmount !== '' || filterMaxAmount !== '') && (
+            <button
+              onClick={() => {
+                setFilterDate('');
+                setFilterMinAmount('');
+                setFilterMaxAmount('');
+              }}
+              className="h-10 px-4 rounded-xl text-xs font-bold text-rose-500 bg-rose-50 hover:bg-rose-100 transition-colors dark:bg-rose-950/20"
+            >
+              Réinitialiser
+            </button>
+          )}
         </div>
       </div>
 
@@ -316,14 +417,14 @@ export default function SalesPage() {
                     <td className="px-6 py-4"><div className="h-4 w-16 rounded bg-zinc-100 dark:bg-zinc-800 ml-auto" /></td>
                   </tr>
                 ))
-              ) : sales.length === 0 ? (
+              ) : filteredSales.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="px-6 py-12 text-center text-zinc-500">
-                    Aucune vente enregistrée. Cliquez sur "Saisir les Ventes du Jour".
+                    Aucune vente ne correspond à vos filtres.
                   </td>
                 </tr>
               ) : (
-                salesPagination.paginate(sales).map((sale) => (
+                salesPagination.paginate(filteredSales).map((sale) => (
                   <tr key={sale.id} className="group transition-colors hover:bg-emerald-50/30 dark:hover:bg-emerald-950/10">
                     <td className="px-6 py-4 font-medium text-zinc-900 dark:text-zinc-100 whitespace-nowrap">
                       {new Date(sale.createdAt).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'long' })}
@@ -366,7 +467,7 @@ export default function SalesPage() {
         </div>
         <Pagination
           currentPage={salesPagination.page}
-          totalItems={sales.length}
+          totalItems={filteredSales.length}
           itemsPerPage={salesPagination.perPage}
           onPageChange={salesPagination.setPage}
           onItemsPerPageChange={salesPagination.setPerPage}
