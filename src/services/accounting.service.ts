@@ -7,11 +7,23 @@ export class AccountingService {
    * Liabilities (Passifs): Capital, Loans, Supplier Debts (Dettes Fournisseurs)
    */
   static async getBalanceSheet(storeId: string) {
-    // 1. Assets from Financial Records (Cash/Bank)
+    // 1. Assets from Financial Records by payment method
     const financialAssets = await prisma.financialRecord.aggregate({
       where: { storeId, type: 'ASSET' },
       _sum: { amount: true }
     });
+
+    // 1b. Assets broken down by payment method for treasury sync
+    const assetsByMethod = await prisma.financialRecord.groupBy({
+      by: ['paymentMethod'],
+      where: { storeId, type: 'ASSET' },
+      _sum: { amount: true }
+    });
+
+    const assetBreakdown: Record<string, number> = {};
+    for (const a of assetsByMethod) {
+      assetBreakdown[a.paymentMethod || 'CASH'] = a._sum.amount || 0;
+    }
 
     // 2. Stock Value (Current stock * purchase price)
     const products = await prisma.product.findMany({
@@ -20,26 +32,34 @@ export class AccountingService {
     });
     const stockValue = products.reduce((acc, p) => acc + (p.stockLevel * p.purchasePrice), 0);
 
-    // 3. Customer Receivables (Not implemented yet, assuming 0 for now or based on Sales if we add isPaid)
-    // For now, let's just focus on what we have
-
-    // 4. Liabilities from Financial Records (Loans, etc.)
+    // 3. Liabilities from Financial Records (Loans, etc.)
     const financialLiabilities = await prisma.financialRecord.aggregate({
       where: { storeId, type: 'LIABILITY' },
       _sum: { amount: true }
     });
 
-    // 5. Supplier Debts (Unpaid Purchases)
+    // 4. Supplier Debts (Unpaid Purchases)
     const unpaidPurchases = await prisma.purchase.aggregate({
       where: { storeId, isPaid: false },
       _sum: { amount: true }
     });
 
-    // 6. Equity (Capital)
+    // 5. Equity (Capital) by payment method
     const equity = await prisma.financialRecord.aggregate({
       where: { storeId, type: 'EQUITY' },
       _sum: { amount: true }
     });
+
+    const equityByMethod = await prisma.financialRecord.groupBy({
+      by: ['paymentMethod'],
+      where: { storeId, type: 'EQUITY' },
+      _sum: { amount: true }
+    });
+
+    const equityBreakdown: Record<string, number> = {};
+    for (const e of equityByMethod) {
+      equityBreakdown[e.paymentMethod || 'CASH'] = e._sum.amount || 0;
+    }
 
     const totalAssets = (financialAssets._sum.amount || 0) + stockValue;
     const totalLiabilities = (financialLiabilities._sum.amount || 0) + (unpaidPurchases._sum.amount || 0);
@@ -48,6 +68,7 @@ export class AccountingService {
     return {
       assets: {
         financial: financialAssets._sum.amount || 0,
+        byMethod: assetBreakdown,
         stock: stockValue,
         total: totalAssets
       },
@@ -58,6 +79,7 @@ export class AccountingService {
       },
       equity: {
         capital: totalEquity,
+        byMethod: equityBreakdown,
         total: totalEquity
       },
       ratios: {

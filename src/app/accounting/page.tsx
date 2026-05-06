@@ -29,7 +29,9 @@ import {
   Building2,
   Wallet,
   Trash2,
-  Info
+  Info,
+  Banknote,
+  Smartphone
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -44,7 +46,8 @@ export default function AccountingPage() {
     category: 'CASH',
     amount: '',
     date: new Date().toISOString().split('T')[0],
-    notes: ''
+    notes: '',
+    paymentMethod: 'CASH'
   });
 
   const categoriesByType: Record<string, { value: string, label: string }[]> = {
@@ -100,7 +103,7 @@ export default function AccountingPage() {
 
       if (res.ok) {
         setShowEntryForm(false);
-        setEntryForm({ type: 'ASSET', category: 'CASH', amount: '', date: new Date().toISOString().split('T')[0], notes: '' });
+        setEntryForm({ type: 'ASSET', category: 'CASH', amount: '', date: new Date().toISOString().split('T')[0], notes: '', paymentMethod: 'CASH' });
         fetchAccountingData();
       } else {
         const err = await res.json();
@@ -371,6 +374,7 @@ export default function AccountingPage() {
                 <th className="px-6 py-3 font-medium text-zinc-500">Date de l'opération</th>
                 <th className="px-6 py-3 font-medium text-zinc-500">Type</th>
                 <th className="px-6 py-3 font-medium text-zinc-500">Catégorie</th>
+                <th className="px-6 py-3 font-medium text-zinc-500">Compte</th>
                 <th className="px-6 py-3 font-medium text-zinc-500">Note</th>
                 <th className="px-6 py-3 font-medium text-zinc-500 text-right">Montant</th>
                 <th className="px-6 py-3 font-medium text-zinc-500 text-center sticky right-0 z-10 bg-zinc-50/50 dark:bg-zinc-950/20 backdrop-blur-sm shadow-[-10px_0_15px_-5px_rgba(0,0,0,0.05)]">Action</th>
@@ -379,7 +383,7 @@ export default function AccountingPage() {
             <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800">
               {records.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-zinc-400">Aucune saisie manuelle pour ce mois.</td>
+                  <td colSpan={7} className="px-6 py-8 text-center text-zinc-400">Aucune saisie manuelle pour ce mois.</td>
                 </tr>
               ) : (
                 records.map((rec: any) => (
@@ -399,6 +403,16 @@ export default function AccountingPage() {
                     </td>
                     <td className="px-6 py-4 text-zinc-800 dark:text-zinc-200 font-medium">
                       {categoriesByType[rec.type]?.find(c => c.value === rec.category)?.label || rec.category}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={cn(
+                        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider",
+                        rec.paymentMethod === 'CASH' ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400" :
+                        rec.paymentMethod === 'BANK' ? "bg-blue-50 text-blue-700 dark:bg-blue-950/20 dark:text-blue-400" :
+                        "bg-violet-50 text-violet-700 dark:bg-violet-950/20 dark:text-violet-400"
+                      )}>
+                        {rec.paymentMethod === 'CASH' ? '💵 Caisse' : rec.paymentMethod === 'BANK' ? '🏦 Banque' : '📱 Mobile'}
+                      </span>
                     </td>
                     <td className="px-6 py-4 text-zinc-500 italic max-w-xs truncate">
                       {rec.notes || '—'}
@@ -483,6 +497,52 @@ export default function AccountingPage() {
                     required
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-1.5">Compte / Moyen de paiement</label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEntryForm(prev => ({ ...prev, paymentMethod: 'CASH' }))}
+                    className={cn(
+                      "flex flex-col items-center gap-1.5 rounded-xl border-2 p-3 transition-all text-sm font-semibold",
+                      entryForm.paymentMethod === 'CASH'
+                        ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-600"
+                        : "border-zinc-200 text-zinc-500 hover:border-zinc-300 dark:border-zinc-700 dark:hover:border-zinc-600"
+                    )}
+                  >
+                    <Banknote className="h-5 w-5" />
+                    <span className="text-xs">Caisse</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEntryForm(prev => ({ ...prev, paymentMethod: 'BANK' }))}
+                    className={cn(
+                      "flex flex-col items-center gap-1.5 rounded-xl border-2 p-3 transition-all text-sm font-semibold",
+                      entryForm.paymentMethod === 'BANK'
+                        ? "border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-600"
+                        : "border-zinc-200 text-zinc-500 hover:border-zinc-300 dark:border-zinc-700 dark:hover:border-zinc-600"
+                    )}
+                  >
+                    <Building2 className="h-5 w-5" />
+                    <span className="text-xs">Banque</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEntryForm(prev => ({ ...prev, paymentMethod: 'MOBILE' }))}
+                    className={cn(
+                      "flex flex-col items-center gap-1.5 rounded-xl border-2 p-3 transition-all text-sm font-semibold",
+                      entryForm.paymentMethod === 'MOBILE'
+                        ? "border-violet-500 bg-violet-50 text-violet-700 dark:bg-violet-950/20 dark:text-violet-400 dark:border-violet-600"
+                        : "border-zinc-200 text-zinc-500 hover:border-zinc-300 dark:border-zinc-700 dark:hover:border-zinc-600"
+                    )}
+                  >
+                    <Smartphone className="h-5 w-5" />
+                    <span className="text-xs">Mobile Money</span>
+                  </button>
+                </div>
+                <p className="mt-1.5 text-[10px] text-zinc-400">Dans quel compte cet argent est-il déposé ?</p>
               </div>
 
               <div>

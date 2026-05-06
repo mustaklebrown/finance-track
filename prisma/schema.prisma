@@ -257,16 +257,17 @@ model Purchase {
 }
 
 model FinancialRecord {
-  id        String   @id @default(uuid())
-  type      String?
-  category  String?
-  amount    Float
-  date      DateTime @default(now())
-  notes     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  storeId   String
-  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  id            String   @id @default(uuid())
+  type          String?
+  category      String?
+  amount        Float
+  date          DateTime @default(now())
+  notes         String?
+  paymentMethod String   @default("CASH")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  storeId       String
+  store         Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
   @@index([storeId, type])
   @@index([storeId, category])

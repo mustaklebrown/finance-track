@@ -52,7 +52,7 @@ export async function POST(req: Request) {
     if (!store) return NextResponse.json({ error: 'Store not found' }, { status: 404 });
 
     const body = await req.json();
-    const { type, category, amount, date, notes } = body;
+    const { type, category, amount, date, notes, paymentMethod } = body;
 
     const record = await prisma.financialRecord.create({
       data: {
@@ -61,6 +61,7 @@ export async function POST(req: Request) {
         amount,
         date: date ? new Date(date) : undefined,
         notes,
+        paymentMethod: paymentMethod || 'CASH',
         storeId: store.id
       }
     });
